@@ -1,0 +1,22 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 16px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.card {
+    border: 1px solid #ddd;
+    padding: 8px;
+    border-radius: 6px;
+}
