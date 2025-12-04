@@ -4,10 +4,10 @@ if (session_status() == PHP_SESSION_NONE) {
 }
 $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 function isActive($path, $current) {
-    // Active: Light blue text, thick bottom border
+    // Active: Light Cyan text (#84ffff), thick bottom border
     // Inactive: White text, transparent border
     return $path === $current 
-        ? 'color:#e7f3ff;border-bottom:4px solid #e7f3ff;' 
+        ? 'color:#84ffff;border-bottom:4px solid #84ffff;' 
         : 'color:white;border-bottom:4px solid transparent;';
 }
 ?>
