@@ -53,29 +53,41 @@ try {
     $insert->execute([$listingId, $tenantId, $startDate, $endDate]);
 
     // Send Email
+    require_once __DIR__ . '/../../helpers/mail.php';
+
     $currentUserStmt = $pdo->prepare("SELECT full_name, phone, email FROM users WHERE id = ?");
     $currentUserStmt->execute([$tenantId]);
     $tenant = $currentUserStmt->fetch();
 
     $to = $listing['owner_email'];
     $subject = "Yêu cầu thuê phòng mới: " . $listing['title'];
-    $message = "Xin chào " . $listing['owner_name'] . ",\n\n";
-    $message .= "Bạn vừa nhận được một yêu cầu thuê phòng cho bài đăng: " . $listing['title'] . ".\n\n";
-    $message .= "--- Thông tin người thuê ---\n";
-    $message .= "Họ tên: " . ($tenant['full_name'] ?: 'Người dùng ẩn danh') . "\n";
-    $message .= "Số điện thoại: " . ($tenant['phone'] ?: 'Chưa cập nhật') . "\n";
-    $message .= "Email: " . $tenant['email'] . "\n";
-    $message .= "Ngày bắt đầu dự kiến: " . ($startDate ?: 'Chưa xác định') . "\n\n";
-    $message .= "Vui lòng truy cập trang Quản lý cho thuê để Xác nhận hoặc Từ chối yêu cầu này.\n";
-    $message .= "Link: http://" . $_SERVER['HTTP_HOST'] . "/manage_rentals.php\n";
     
-    $headers = "From: no-reply@thuetro.com\r\n";
-    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    // Tạo nội dung HTML
+    $body = "
+    <h3>Xin chào {$listing['owner_name']},</h3>
+    <p>Bạn vừa nhận được một yêu cầu thuê phòng mới cho bài đăng: <strong>{$listing['title']}</strong></p>
+    
+    <div style='background: #f9f9f9; padding: 15px; border-left: 4px solid #0866ff; margin: 10px 0;'>
+        <h4>Thông tin người thuê:</h4>
+        <p><strong>Họ tên:</strong> " . ($tenant['full_name'] ?: 'Người dùng ẩn danh') . "</p>
+        <p><strong>Số điện thoại:</strong> " . ($tenant['phone'] ?: 'Chưa cập nhật') . "</p>
+        <p><strong>Email:</strong> {$tenant['email']}</p>
+        <p><strong>Ngày bắt đầu thuê (dự kiến):</strong> " . ($startDate ?: 'Chưa xác định') . "</p>
+    </div>
 
-    // Attempt to send email (suppress errors if local server not configured)
-    @mail($to, $subject, $message, $headers);
+    <p>Vui lòng truy cập trang <a href='http://{$_SERVER['HTTP_HOST']}/manage_rentals.php'>Quản lý cho thuê</a> để Xác nhận hoặc Từ chối yêu cầu này.</p>
+    <p>Trân trọng,<br>Đội ngũ Thuê Trọ</p>
+    ";
 
-    echo json_encode(['success' => true, 'message' => 'Yêu cầu của bạn đã được gửi thành công!']);
+    // Gửi mail
+    $mailSent = sendMail($to, $subject, $body);
+
+    if ($mailSent) {
+        echo json_encode(['success' => true, 'message' => 'Yêu cầu thuê đã được gửi! Chủ nhà sẽ nhận được email thông báo.']);
+    } else {
+        // Vẫn báo thành công cho user nhưng log lỗi (hoặc báo warning) - Ở đây ta chỉ báo thành công việc đặt booking
+        echo json_encode(['success' => true, 'message' => 'Đã gửi yêu cầu đặt phòng (Lỗi gửi email thông báo).']);
+    }
 
 } catch (Exception $e) {
     http_response_code(500);

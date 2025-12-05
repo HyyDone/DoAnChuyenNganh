@@ -101,18 +101,26 @@ try {
 
             // Verify ownership
             $check = $pdo->prepare("
-                SELECT b.id 
+                SELECT b.id, b.listing_id 
                 FROM bookings b 
                 JOIN listings l ON b.listing_id = l.id 
                 WHERE b.id = ? AND l.owner_id = ?
             ");
             $check->execute([$bookingId, $userId]);
-            if (!$check->fetch()) {
+            $checkStmt = $check->fetch();
+            if (!$checkStmt) {
                 throw new Exception('Permission denied');
             }
 
+            $bookingListingId = $checkStmt['listing_id'];
+
+            // Update booking status to cancelled
             $upd = $pdo->prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?");
             $upd->execute([$bookingId]);
+            
+            // Restore listing status to available (un-hide it)
+            $updL = $pdo->prepare("UPDATE listings SET status = 'available' WHERE id = ?");
+            $updL->execute([$bookingListingId]);
             
             echo json_encode(['success' => true]);
             break;
