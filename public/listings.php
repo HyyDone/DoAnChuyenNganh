@@ -154,7 +154,8 @@ function loadListings() {
         price_min: priceMin,
         price_max: priceMax,
         city: city,
-        room_type: roomType
+        room_type: roomType,
+        status: 'available' // Only show available listings
     });
 
     fetch(`/api/listings.php?${params.toString()}`)
