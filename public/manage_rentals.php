@@ -359,6 +359,8 @@ if (!isset($_SESSION['user_id'])) {
         </div>
     </div>
 
+    <?php include __DIR__ . '/includes/footer.php'; ?>
+
     <script>
         let currentView = 'my_listings';
         let currentItems = [];

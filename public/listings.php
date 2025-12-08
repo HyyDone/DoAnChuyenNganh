@@ -114,6 +114,7 @@ require_once __DIR__ . '/includes/header.php';
 
     </div>
 </div>
+<?php include __DIR__ . '/includes/footer.php'; ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
