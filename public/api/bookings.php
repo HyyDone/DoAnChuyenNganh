@@ -51,6 +51,18 @@ try {
         VALUES (?, ?, ?, ?, 'pending')
     ");
     $insert->execute([$listingId, $tenantId, $startDate, $endDate]);
+    $bookingId = $pdo->lastInsertId();
+
+    // Create Notification for Owner
+    $notifMsg = "Bạn có yêu cầu thuê mới cho: " . $listing['title'];
+    $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'request_booking', ?, ?)");
+    // Need owner_id. Join above selects owner_email/name but we need ID.
+    // Let's refetch query above or just add owner_id to select
+    $stmtOwner = $pdo->prepare("SELECT owner_id FROM listings WHERE id = ?");
+    $stmtOwner->execute([$listingId]);
+    $ownerId = $stmtOwner->fetchColumn();
+    
+    $notifStmt->execute([$ownerId, $bookingId, $notifMsg]);
 
     // Send Email
     require_once __DIR__ . '/../../helpers/mail.php';

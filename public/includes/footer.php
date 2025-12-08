@@ -13,3 +13,38 @@
         <a href="#" style="color:white;text-decoration:none;margin:0 5px;">Privacy</a>
     </p>
 </footer>
+
+<!-- Chat Widget Global Include -->
+<link rel="stylesheet" href="/assets/css/chat.css">
+<script>
+    window.currentUserId = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
+    window.isUserLoggedIn = <?= isset($_SESSION['user_id']) ? 'true' : 'false' ?>;
+</script>
+
+<div class="chat-widget-container">
+    <div class="chat-popup" id="chatPopup">
+        <div class="chat-header" onclick="closeChat()">
+            <div class="chat-user-info">
+                <img src="/assets/default-avatar.png" class="chat-user-avatar" id="chatUserAvatar">
+                <span id="chatUserName">User Name</span>
+            </div>
+            <div class="chat-controls">
+                <i class="fa-solid fa-xmark" onclick="closeChat()"></i>
+            </div>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <!-- Messages go here -->
+        </div>
+        <div class="chat-footer">
+            <label for="chatImageInput" class="chat-upload-label" title="Gửi ảnh">
+                <i class="fa-solid fa-image"></i>
+            </label>
+            <input type="file" id="chatImageInput" accept="image/*" style="display:none">
+            
+            <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." onkeydown="handleChatKey(event)">
+            <button class="chat-send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<script src="/assets/js/chat.js"></script>

@@ -89,6 +89,23 @@ try {
             // For now let's keep it simple.
             
             $pdo->commit();
+
+            // Notify Tenant
+            $notifMsg = "Yêu cầu thuê phòng '" . $booking['title'] . "' của bạn đã được CHẤP NHẬN!";
+            // Need tenant_id and title. Join already has title. fetch adds it.
+            // Check select: SELECT b.id, b.listing_id ... (missing title, tenant_id)
+            // Let's refetch with more info inside the case or modify the check query.
+            // Modifying check query above is risky if we don't change fetch.
+            // Safer to just query here.
+            $infoStmt = $pdo->prepare("SELECT b.tenant_id, l.title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = ?");
+            $infoStmt->execute([$bookingId]);
+            $info = $infoStmt->fetch();
+            
+            if ($info) {
+                $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'booking_confirmed', ?, ?)");
+                $nStmt->execute([$info['tenant_id'], $bookingId, "Yêu cầu thuê phòng '" . $info['title'] . "' của bạn đã được CHẤP NHẬN!"]);
+            }
+
             echo json_encode(['success' => true]);
             break;
 
@@ -122,6 +139,16 @@ try {
             $updL = $pdo->prepare("UPDATE listings SET status = 'available' WHERE id = ?");
             $updL->execute([$bookingListingId]);
             
+            // Notify Tenant
+            $infoStmt = $pdo->prepare("SELECT b.tenant_id, l.title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = ?");
+            $infoStmt->execute([$bookingId]);
+            $info = $infoStmt->fetch();
+            
+            if ($info) {
+                $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'booking_rejected', ?, ?)");
+                $nStmt->execute([$info['tenant_id'], $bookingId, "Yêu cầu thuê phòng '" . $info['title'] . "' của bạn đã bị TỪ CHỐI."]);
+            }
+
             echo json_encode(['success' => true]);
             break;
 

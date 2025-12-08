@@ -663,7 +663,7 @@ if (isset($_SESSION['user_id'])) {
                         <div class="post-header">
                             <img src="/${post.avatar || 'assets/default-avatar.png'}" class="user-avatar" alt="${post.username}">
                             <div class="post-info">
-                                <h4><a href="#">${escapeHtml(displayName)}</a></h4>
+                                <h4><a href="/profile.php?id=${post.user_id}">${escapeHtml(displayName)}</a></h4>
                                 <span class="post-time">${formatDate(post.created_at)}</span>
                             </div>
                             ${menuHtml}
@@ -798,7 +798,7 @@ if (isset($_SESSION['user_id'])) {
                     <img src="/${comment.avatar || 'assets/default-avatar.png'}" class="user-avatar" style="width: 32px; height: 32px;">
                     <div style="flex: 1;">
                         <div style="background: #f0f2f5; padding: 8px 12px; border-radius: 18px; display: inline-block;">
-                            <div style="font-weight: 600; font-size: 0.9rem;">${escapeHtml(displayName)}</div>
+                            <div style="font-weight: 600; font-size: 0.9rem;"><a href="/profile.php?id=${comment.user_id}" style="color:inherit;text-decoration:none;">${escapeHtml(displayName)}</a></div>
                             <div style="font-size: 0.95rem;">${escapeHtml(comment.content)}</div>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--secondary-text); margin-top: 2px; margin-left: 4px;">

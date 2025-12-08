@@ -365,6 +365,16 @@ if (!isset($_SESSION['user_id'])) {
         let selectedId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const view = urlParams.get('view');
+            if (view && ['my_listings', 'my_rentals', 'stats'].includes(view)) {
+                // Find button
+                const btn = document.querySelector(`.nav-btn[onclick*="'${view}'"]`);
+                if (btn) {
+                    switchView(view, btn);
+                    return; // switchView calls loadData
+                }
+            }
             loadData();
         });
 

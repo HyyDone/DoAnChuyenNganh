@@ -1,0 +1,240 @@
+/* Chat Widget CSS */
+.chat-widget-container {
+    position: fixed;
+    bottom: 0;
+    right: 80px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+}
+
+.chat-popup {
+    width: 330px;
+    height: 450px;
+    background: white;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-bottom: 0;
+    /* Attach to bottom */
+    border: 1px solid #ddd;
+    border-bottom: none;
+    display: none;
+    /* Hidden by default */
+}
+
+.chat-popup.active {
+    display: flex;
+}
+
+.chat-header {
+    padding: 8px 12px;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.chat-header:hover {
+    background-color: #f5f6f7;
+}
+
+.chat-user-info {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.chat-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 8px;
+    object-fit: cover;
+}
+
+.chat-controls i {
+    color: var(--primary-color);
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.message-bubble {
+    max-width: 75%;
+    padding: 8px 12px;
+    border-radius: 18px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    position: relative;
+    word-wrap: break-word;
+}
+
+.message-sent {
+    background: var(--primary-color);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.message-received {
+    background: #f0f2f5;
+    color: black;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-footer {
+    padding: 12px;
+    border-top: 1px solid #ddd;
+    background: white;
+    display: flex;
+    align-items: center;
+}
+
+.chat-input {
+    flex: 1;
+    border: none;
+    background: #f0f2f5;
+    padding: 8px 12px;
+    border-radius: 20px;
+    outline: none;
+    font-size: 0.95rem;
+}
+
+.chat-send-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+/* New Styles for Image Upload */
+.chat-upload-label {
+    cursor: pointer;
+    color: var(--primary-color);
+    padding: 8px;
+    margin-right: 5px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.chat-upload-label:hover {
+    color: #0056b3;
+}
+
+.message-image {
+    max-width: 200px;
+    border-radius: 8px;
+    margin-top: 5px;
+    cursor: pointer;
+    display: block;
+}
+
+/* Modal for Image Preview (Optional, or just open in new tab) */
+.image-preview-modal {
+    display: none;
+    /* ... future enhancement ... */
+}
+
+/* Minimized State (Bubble) - Optional if we want bubbles like Messenger */
+.chat-bubble-minimized {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+/* Conversation List (for message dropdown) */
+.conversation-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.conversation-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.conversation-item:hover {
+    background: #f2f2f2;
+}
+
+.conversation-item.unread {
+    background: #eef7ff;
+}
+
+.conversation-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+}
+
+.conversation-details {
+    flex: 1;
+    overflow: hidden;
+}
+
+.conversation-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: black;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conversation-last-msg {
+    font-size: 0.85rem;
+    color: #65676b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conversation-item.unread .conversation-last-msg {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.unread-dot-indicator {
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    border: 2px solid white;
+}

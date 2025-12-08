@@ -4,15 +4,25 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/upload.php';
 require_login();
 
-$uid = current_user_id();
+$currentUid = (int) current_user_id();
+$profileUid = isset($_GET['id']) ? intval($_GET['id']) : $currentUid;
+
+// Fetch profile user
 $stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio FROM users WHERE id = ?");
-$stmt->execute([$uid]);
+$stmt->execute([$profileUid]);
 $user = $stmt->fetch();
+
+if (!$user) {
+    die("Người dùng không tồn tại.");
+}
+
+$isOwner = ($currentUid === $profileUid);
 
 $errors = [];
 $success = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Only allow updates if owner
+if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $full = trim($_POST['full_name'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $bio = trim($_POST['bio'] ?? '');
@@ -24,18 +34,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $avatarPath = $res['path'];
             $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ?, bio = ?, avatar = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$full, $phone, $bio, $avatarPath, $uid]);
+            $stmt->execute([$full, $phone, $bio, $avatarPath, $currentUid]);
             $success = "Cập nhật thành công.";
         }
     } else {
         $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ?, bio = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$full, $phone, $bio, $uid]);
+        $stmt->execute([$full, $phone, $bio, $currentUid]);
         $success = "Cập nhật thành công.";
     }
     
     // Refresh user data
     $stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio FROM users WHERE id = ?");
-    $stmt->execute([$uid]);
+    $stmt->execute([$profileUid]);
     $user = $stmt->fetch();
 }
 ?>
@@ -315,18 +325,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="profile-info">
                 <div class="avatar-container">
                     <img src="/<?= htmlspecialchars($user['avatar'] ?: 'assets/default-avatar.png') ?>" alt="Avatar" class="avatar">
+                    <?php if ($isOwner): ?>
                     <div class="camera-icon" onclick="openEditModal()">
                         <i class="fa-solid fa-camera"></i>
                     </div>
+                    <?php endif; ?>
                 </div>
                 <div class="user-details">
                     <h1><?= htmlspecialchars($user['full_name'] ?: $user['username']) ?></h1>
                     <p>@<?= htmlspecialchars($user['username']) ?></p>
                 </div>
             </div>
-            <button class="edit-profile-btn" onclick="openEditModal()">
-                <i class="fa-solid fa-pen"></i> Chỉnh sửa trang cá nhân
-            </button>
+            
+            <?php if ($isOwner): ?>
+                <button class="edit-profile-btn" onclick="openEditModal()">
+                    <i class="fa-solid fa-pen"></i> Chỉnh sửa trang cá nhân
+                </button>
+            <?php else: ?>
+                <button class="edit-profile-btn" onclick="openChat(<?= $user['id'] ?>, '<?= htmlspecialchars($user['full_name'] ?: $user['username'], ENT_QUOTES) ?>', '<?= htmlspecialchars($user['avatar'] ?? '', ENT_QUOTES) ?>')">
+                    <i class="fa-brands fa-facebook-messenger"></i> Nhắn tin
+                </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -359,9 +378,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
             
+            <?php if ($isOwner): ?>
             <button class="edit-profile-btn" style="width:100%; justify-content:center;" onclick="openEditModal()">
                 Chỉnh sửa chi tiết
             </button>
+            <?php endif; ?>
         </div>
         
         <!-- Placeholder for posts or other content -->
