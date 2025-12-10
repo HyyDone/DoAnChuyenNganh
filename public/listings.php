@@ -1,3 +1,26 @@
+<?php
+ini_set("display_errors", 1);
+ini_set("display_startup_errors", 1);
+error_reporting(E_ALL);
+require_once __DIR__ . '/../config/db.php';
+// die('DEBUG: ALIVE - Listings page is executing PHP');
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Fetch user data if logged in (similar to index.php) to ensure session is valid
+$currentUser = null;
+if (isset($_SESSION['user_id'])) {
+    try {
+        $stmt = $pdo->prepare("SELECT username, full_name, avatar FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $currentUser = $stmt->fetch();
+    } catch (PDOException $e) {
+        // Silent fail or log
+        error_log("DB Error in listings.php: " . $e->getMessage());
+    }
+}
+?>
 <!doctype html>
 <html lang="vi">
 <head>
@@ -7,22 +30,155 @@
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary-color: #0866ff;
+            --text-color: #050505;
+            --secondary-text: #65676b;
+            --divider: #ced0d4;
+            --hover-bg: #f2f2f2;
+        }
+
         body {
             font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
+            background-color: var(--bg-color);
             margin: 0;
             padding: 0;
+        }
+
+        /* AI Chat Box (From Index) */
+        .ai-chat-box {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 20px;
+            height: 520px; /* Kept fixed height from listings page for consistency */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ai-chat-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--divider);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .ai-chat-header i {
+            margin-right: 8px;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message-bot {
+            align-self: flex-start;
+            background: #e4e6eb;
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-user {
+            align-self: flex-end;
+            background: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-input-area {
+            padding: 12px;
+            border-top: 1px solid var(--divider);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid var(--divider);
+            border-radius: 20px;
+            padding: 8px 12px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .chat-send-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 8px;
+        }
+        
+        .chat-send-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Chat Image Preview */
+        .chat-image-preview-box {
+            position: relative;
+            padding: 8px 12px;
+            border-top: 1px solid var(--divider);
+            display: none;
+        }
+        .chat-image-preview-box.active {
+            display: block;
+        }
+        .chat-preview-img {
+            height: 60px;
+            border-radius: 4px;
+        }
+        .chat-preview-remove {
+            position: absolute;
+            top: 4px;
+            left: 65px; /* Position next to image */
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .chat-upload-btn {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 8px;
+            display: flex;
+            align-items: center;
         }
     </style>
 </head>
 <body>
 
 <?php
-require_once __DIR__ . '/includes/header.php';
+include __DIR__ . '/includes/header.php';
 ?>
 
 <div style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
-    <div style="display: grid; grid-template-columns: 20% 60% 20%; gap: 20px;">
+    <div style="display: grid; grid-template-columns: 300px 1fr 360px; gap: 24px;">
         
         <!-- Left Column: Post Listing Form -->
         <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: fit-content;">
@@ -58,7 +214,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Hình ảnh</label>
-                    <input type="file" name="image" accept="image/*" style="width: 100%;">
+                    <input type="file" name="image" accept="image" style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Mô tả</label>
@@ -106,15 +262,38 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
 
-        <!-- Right Column: Placeholder -->
-        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: fit-content;">
-            <h3 style="margin-top: 0; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Thông báo</h3>
-            <p style="color: #666; font-style: italic;">Chức năng chưa được phát triển</p>
+        <!-- Right Column: AI Chat -->
+        <div style="height: fit-content;"> <!-- Wrapper to keep sticky behavior if needed -->
+            <div class="ai-chat-box">
+                <div class="ai-chat-header">
+                    <i class="fa-solid fa-robot"></i>
+                    Trợ lý AI
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
+                </div>
+                <div class="chat-image-preview-box" id="aiChatPreviewBox">
+                    <img src="" class="chat-preview-img" id="aiChatPreviewImg">
+                    <div class="chat-preview-remove" onclick="removeChatImage()">&times;</div>
+                </div>
+                <div class="chat-input-area">
+                    <label for="aiChatFile" class="chat-upload-btn">
+                        <i class="fa-solid fa-image"></i>
+                    </label>
+                    <input type="file" id="aiChatFile" hidden accept="image/*" onchange="previewChatImage(this)">
+                    
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." onkeypress="handleChatKey(event)">
+                    <button class="chat-send-btn" onclick="sendChatMessage()">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
     </div>
 </div>
 <?php include __DIR__ . '/includes/footer.php'; ?>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -170,7 +349,7 @@ function loadListings() {
                 const item = document.createElement('div');
                 item.style.cssText = 'background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; gap: 15px;';
                 
-                const imagePath = listing.image_path ? listing.image_path : '/assets/default-room.jpg'; // Fallback image
+                const imagePath = listing.image_path ? listing.image_path : 'https://placehold.co/400x300?text=Phong+Tro'; // Fallback image
                 
                 item.innerHTML = `
                     <div style="width: 150px; height: 120px; flex-shrink: 0;">
@@ -198,6 +377,104 @@ function loadListings() {
         console.error('Error:', error);
         document.getElementById('listingsContainer').innerHTML = '<p style="text-align:center; color: red;">Lỗi khi tải dữ liệu.</p>';
     });
+}
+
+const chatInput = document.getElementById('chatInput');
+const chatMessages = document.getElementById('chatMessages');
+const aiChatFile = document.getElementById('aiChatFile');
+const aiChatPreviewBox = document.getElementById('aiChatPreviewBox');
+const aiChatPreviewImg = document.getElementById('aiChatPreviewImg');
+
+let chatContext = [];
+
+function handleChatKey(e) {
+    if (e.key === 'Enter') {
+        sendChatMessage();
+    }
+}
+
+function previewChatImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            aiChatPreviewImg.src = e.target.result;
+            aiChatPreviewBox.classList.add('active');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function removeChatImage() {
+    aiChatFile.value = '';
+    aiChatPreviewImg.src = '';
+    aiChatPreviewBox.classList.remove('active');
+}
+
+async function sendChatMessage() {
+    const message = chatInput.value.trim();
+    const hasImage = aiChatFile.files.length > 0;
+            
+    if (!message && !hasImage) return;
+
+    // Add user message
+    let userDisplay = message;
+    if (hasImage) {
+        userDisplay += '<br><small><i>[Đã gửi 1 ảnh]</i></small>';
+    }
+    addMessageToChat(userDisplay, 'user');
+
+    chatContext.push({ sender: 'user', text: message + (hasImage ? " [User sent an image]" : "") });
+    chatInput.value = '';
+
+    const formData = new FormData();
+    formData.append('message', message);
+    if (hasImage) {
+        formData.append('image', aiChatFile.files[0]);
+    }
+    formData.append('history', JSON.stringify(chatContext));
+
+    removeChatImage();
+
+    const loadingId = addMessageToChat('<i class="fa-solid fa-ellipsis fa-fade"></i>', 'bot');
+
+    try {
+        const response = await fetch('/api/ai_chat.php', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        
+        document.getElementById(loadingId).remove();
+
+        if (result.success) {
+            addMessageToChat(result.response, 'bot');
+            chatContext.push({ sender: 'bot', text: result.response });
+
+             // Handle Actions (Auto Listing)
+            if (result.action_performed === 'listing_created') {
+                console.log('Listing created by AI, reloading list...');
+                loadListings(); 
+            }
+        } else {
+            addMessageToChat("Lỗi: " + result.message, 'bot');
+        }
+    } catch (error) {
+        console.error('Chat error:', error);
+        document.getElementById(loadingId).remove();
+        addMessageToChat("Xin lỗi, tôi đang gặp sự cố kết nối.", 'bot');
+    }
+}
+
+function addMessageToChat(html, sender) {
+    const div = document.createElement('div');
+    div.className = `chat-message message-${sender}`;
+    div.id = 'msg-' + Date.now();
+    div.innerHTML = html;
+    chatMessages.appendChild(div);
+    requestAnimationFrame(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+    return div.id;
 }
 </script>
 

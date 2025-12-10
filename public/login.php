@@ -3,12 +3,13 @@ require_once __DIR__ . '/../config/db.php';
 session_start();
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
+    $loginInput = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
-    if (!$email || !$password) $errors[] = "Vui lòng nhập email và mật khẩu.";
+    if (!$loginInput || !$password) $errors[] = "Vui lòng nhập tài khoản và mật khẩu.";
     if (empty($errors)) {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
-        $stmt->execute([$email]);
+        // Allow login by Username, Email, or Phone
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? OR username = ? OR phone = ? LIMIT 1");
+        $stmt->execute([$loginInput, $loginInput, $loginInput]);
         $user = $stmt->fetch();
         
         // Kiểm tra mật khẩu bằng SHA256
@@ -200,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 <?php endif; ?>
                 <form method="post" action="/login.php">
-                    <input name="email" type="email" placeholder="Email hoặc số điện thoại" required>
+                    <input name="email" type="text" placeholder="Email, Username hoặc Số điện thoại" required>
                     <input name="password" type="password" placeholder="Mật khẩu" required>
                     <button type="submit" class="login-btn">Đăng nhập</button>
                 </form>

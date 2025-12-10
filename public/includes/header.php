@@ -2,13 +2,16 @@
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+//die('DEBUG: Header Entered');
 $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-function isActive($path, $current) {
-    // Active: Light Cyan text (#84ffff), thick bottom border
-    // Inactive: White text, transparent border
-    return $path === $current 
-        ? 'color:#84ffff;border-bottom:4px solid #84ffff;' 
-        : 'color:white;border-bottom:4px solid transparent;';
+if (!function_exists('isActive')) {
+    function isActive($path, $current) {
+        // Active: Light Cyan text (#84ffff), thick bottom border
+        // Inactive: White text, transparent border
+        return $path === $current 
+            ? 'color:#84ffff;border-bottom:4px solid #84ffff;' 
+            : 'color:white;border-bottom:4px solid transparent;';
+    }
 }
 ?>
 <header style="background:#1877f2;color:white;padding:0 20px;height:60px;display:flex;justify-content:space-between;align-items:center;">
@@ -25,6 +28,12 @@ function isActive($path, $current) {
             $stmt = $pdo->prepare("SELECT username, full_name, avatar FROM users WHERE id = ?");
             $stmt->execute([$_SESSION['user_id']]);
             $headerUser = $stmt->fetch();
+            
+            // Fix: Check if user exists to avoid Fatal Error on bool access
+            if (!$headerUser) {
+                // User not found in DB, maybe deleted. Logout effectively.
+                $headerUser = ['username' => 'User', 'full_name' => '', 'avatar' => ''];
+            }
             
             $displayName = $headerUser['username'] ?? 'User';
             if (!empty($headerUser['full_name'])) {

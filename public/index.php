@@ -390,6 +390,141 @@ if (isset($_SESSION['user_id'])) {
             outline: none;
             font-size: 0.95rem;
         }
+        /* Sidebar Right */
+        .right-sidebar {
+            width: 360px;
+            padding: 0 16px;
+            display: none; /* Hidden on small screens */
+        }
+
+        @media (min-width: 900px) {
+            .right-sidebar {
+                display: block;
+            }
+        }
+
+        /* AI Chat Box */
+        .ai-chat-box {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 80px; /* Adjust based on header height */
+            height: calc(100vh - 100px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ai-chat-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--divider);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .ai-chat-header i {
+            margin-right: 8px;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message-bot {
+            align-self: flex-start;
+            background: #e4e6eb;
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-user {
+            align-self: flex-end;
+            background: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-input-area {
+            padding: 12px;
+            border-top: 1px solid var(--divider);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid var(--divider);
+            border-radius: 20px;
+            padding: 8px 12px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .chat-send-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 8px;
+        }
+        
+        .chat-send-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Chat Image Preview */
+        .chat-image-preview-box {
+            position: relative;
+            padding: 8px 12px;
+            border-top: 1px solid var(--divider);
+            display: none;
+        }
+        .chat-image-preview-box.active {
+            display: block;
+        }
+        .chat-preview-img {
+            height: 60px;
+            border-radius: 4px;
+        }
+        .chat-preview-remove {
+            position: absolute;
+            top: 4px;
+            left: 65px; /* Position next to image */
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .chat-upload-btn {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 8px;
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 
@@ -420,6 +555,34 @@ if (isset($_SESSION['user_id'])) {
                     <div class="skeleton skeleton-text"></div>
                     <div class="skeleton skeleton-text"></div>
                     <div class="skeleton skeleton-text" style="width: 80%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar (AI Chat) -->
+        <div class="right-sidebar">
+            <div class="ai-chat-box">
+                <div class="ai-chat-header">
+                    <i class="fa-solid fa-robot"></i>
+                    Trợ lý AI
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
+                </div>
+                <div class="chat-image-preview-box" id="aiChatPreviewBox">
+                    <img src="" class="chat-preview-img" id="aiChatPreviewImg">
+                    <div class="chat-preview-remove" onclick="removeChatImage()">&times;</div>
+                </div>
+                <div class="chat-input-area">
+                    <label for="aiChatFile" class="chat-upload-btn">
+                        <i class="fa-solid fa-image"></i>
+                    </label>
+                    <input type="file" id="aiChatFile" hidden accept="image/*" onchange="previewChatImage(this)">
+                    
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." onkeypress="handleChatKey(event)">
+                    <button class="chat-send-btn" onclick="sendChatMessage()">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -963,6 +1126,116 @@ if (isset($_SESSION['user_id'])) {
             }
         }
 
+        // --- AI Chat Logic ---
+        const chatInput = document.getElementById('chatInput');
+        const chatMessages = document.getElementById('chatMessages');
+        const aiChatFile = document.getElementById('aiChatFile');
+        const aiChatPreviewBox = document.getElementById('aiChatPreviewBox');
+        const aiChatPreviewImg = document.getElementById('aiChatPreviewImg');
+        
+        // Client-side Context Memory (Reset on reload)
+        let chatContext = [];
+
+        function handleChatKey(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+        
+        function previewChatImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    aiChatPreviewImg.src = e.target.result;
+                    aiChatPreviewBox.classList.add('active');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        function removeChatImage() {
+            aiChatFile.value = '';
+            aiChatPreviewImg.src = '';
+            aiChatPreviewBox.classList.remove('active');
+        }
+
+        async function sendChatMessage() {
+            const message = chatInput.value.trim();
+            const hasImage = aiChatFile.files.length > 0;
+            
+            if (!message && !hasImage) return;
+
+            // Add user message to UI
+            let userDisplay = message;
+            if (hasImage) {
+                userDisplay += '<br><small><i>[Đã gửi 1 ảnh]</i></small>';
+            }
+            addMessageToChat(userDisplay, 'user');
+
+            // Add to Context (Text only for now as pure text history)
+            chatContext.push({ sender: 'user', text: message + (hasImage ? " [User sent an image]" : "") });
+
+            // Clear input
+            chatInput.value = '';
+            
+            // Prepare FormData
+            const formData = new FormData();
+            formData.append('message', message);
+            if (hasImage) {
+                formData.append('image', aiChatFile.files[0]);
+            }
+            formData.append('history', JSON.stringify(chatContext));
+
+            // Clean up preview
+            removeChatImage();
+
+            // Show loading placeholder
+            const loadingId = addMessageToChat('<i class="fa-solid fa-ellipsis fa-fade"></i>', 'bot');
+
+            try {
+                const response = await fetch('/api/ai_chat.php', {
+                    method: 'POST',
+                    body: formData // Fetch automatically sets Content-Type to multipart/form-data
+                });
+                const result = await response.json();
+
+                // Remove loading
+                document.getElementById(loadingId).remove();
+
+                if (result.success) {
+                    addMessageToChat(result.response, 'bot');
+                    
+                    // Add AI response to context
+                    chatContext.push({ sender: 'bot', text: result.response });
+
+                    // Handle Actions
+                    if (result.action_performed === 'post_created') {
+                        console.log('Post created by AI, reloading feed...');
+                        loadPosts(); // Refresh feed
+                    }
+                } else {
+                    addMessageToChat("Lỗi: " + result.message, 'bot');
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                document.getElementById(loadingId).remove();
+                addMessageToChat("Xin lỗi, tôi đang gặp sự cố kết nối.", 'bot');
+            }
+        }
+
+        function addMessageToChat(html, sender) {
+            const div = document.createElement('div');
+            div.className = `chat-message message-${sender}`;
+            div.id = 'msg-' + Date.now();
+            div.innerHTML = html;
+            chatMessages.appendChild(div);
+            // Auto scroll
+            requestAnimationFrame(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+            return div.id;
+        }        // ---------------------
+
         // Utilities
         function escapeHtml(text) {
             if (!text) return '';
@@ -981,7 +1254,15 @@ if (isset($_SESSION['user_id'])) {
 
         function formatDate(dateString) {
             const date = new Date(dateString);
-            return date.toLocaleString('vi-VN');
+            const now = new Date();
+            const diffSeconds = Math.floor((now - date) / 1000);
+
+            if (diffSeconds < 60) return 'Vừa xong';
+            if (diffSeconds < 3600) return Math.floor(diffSeconds / 60) + ' phút trước';
+            if (diffSeconds < 86400) return Math.floor(diffSeconds / 3600) + ' giờ trước';
+            if (diffSeconds < 604800) return Math.floor(diffSeconds / 86400) + ' ngày trước';
+            
+            return date.toLocaleDateString('vi-VN');
         }
 
         // Init
@@ -990,3 +1271,4 @@ if (isset($_SESSION['user_id'])) {
 </body>
 
 </html>
+```

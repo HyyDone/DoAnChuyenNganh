@@ -1,3 +1,4 @@
+<?php if (basename($_SERVER['PHP_SELF']) == 'index.php'): ?>
 <footer style="
     background:#1877f2;
     color: white;
@@ -13,6 +14,7 @@
         <a href="#" style="color:white;text-decoration:none;margin:0 5px;">Privacy</a>
     </p>
 </footer>
+<?php endif; ?>
 
 <!-- Chat Widget Global Include -->
 <link rel="stylesheet" href="/assets/css/chat.css">
