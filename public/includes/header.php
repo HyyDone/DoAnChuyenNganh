@@ -2,12 +2,9 @@
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-//die('DEBUG: Header Entered');
 $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 if (!function_exists('isActive')) {
     function isActive($path, $current) {
-        // Active: Light Cyan text (#84ffff), thick bottom border
-        // Inactive: White text, transparent border
         return $path === $current 
             ? 'color:#84ffff;border-bottom:4px solid #84ffff;' 
             : 'color:white;border-bottom:4px solid transparent;';
@@ -29,9 +26,7 @@ if (!function_exists('isActive')) {
             $stmt->execute([$_SESSION['user_id']]);
             $headerUser = $stmt->fetch();
             
-            // Fix: Check if user exists to avoid Fatal Error on bool access
             if (!$headerUser) {
-                // User not found in DB, maybe deleted. Logout effectively.
                 $headerUser = ['username' => 'User', 'full_name' => '', 'avatar' => ''];
             }
             
@@ -93,6 +88,9 @@ if (!function_exists('isActive')) {
                     <a href="/manage_rentals.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
                         <i class="fa-solid fa-house-chimney" style="width:20px;"></i> Cho Thuê/Thuê Nhà
                     </a>
+                    <a href="/favorites.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
+                        <i class="fa-solid fa-heart" style="width:20px;"></i> Yêu thích
+                    </a>
                     <div style="border-top:1px solid #eee;"></div>
                     <a href="/logout.php" style="display:block; padding:10px 15px; text-decoration:none; color:#dc3545; transition:background 0.2s;">
                         <i class="fa-solid fa-right-from-bracket" style="width:20px;"></i> Đăng xuất
@@ -127,8 +125,6 @@ if (!function_exists('isActive')) {
             if (userDD) userDD.style.display = 'none';
             if (msgDD) msgDD.style.display = 'none';
             
-            // Mark all badge as read visually (optional, or wait for click)
-            // For now, valid requirement: click notification -> action.
             loadNotifications();
         } else {
             dd.style.display = 'none';

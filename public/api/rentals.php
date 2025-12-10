@@ -1,10 +1,15 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/mail.php';
 session_start();
 
+ob_start(); // Buffer output to prevent stray HTML/Whitespace
 header('Content-Type: application/json');
+ini_set('display_errors', 0); // Hide errors from output
+error_reporting(E_ALL); // Still log them
 
 if (!isset($_SESSION['user_id'])) {
+    ob_end_clean();
     http_response_code(401);
     echo json_encode(['error' => 'Unauthorized']);
     exit;
@@ -61,19 +66,26 @@ try {
             $bookingId = $data['booking_id'] ?? 0;
             
             // Verify ownership of the listing associated with this booking
+            // Verify ownership and status
             $check = $pdo->prepare("
-                SELECT b.id, b.listing_id 
+                SELECT b.id, b.listing_id, b.status, l.owner_id
                 FROM bookings b 
                 JOIN listings l ON b.listing_id = l.id 
-                WHERE b.id = ? AND l.owner_id = ? AND b.status = 'pending'
+                WHERE b.id = ?
             ");
-            $check->execute([$bookingId, $userId]);
+            $check->execute([$bookingId]);
             $booking = $check->fetch();
             
             if (!$booking) {
-                throw new Exception('Booking not found or permission denied');
+                throw new Exception('Booking not found');
             }
-
+            if ($booking['owner_id'] != $userId) {
+                throw new Exception('Permission denied');
+            }
+            if ($booking['status'] !== 'pending') {
+                throw new Exception('Request has already been processed (Current status: ' . $booking['status'] . ')');
+            }
+            
             // Transaction
             $pdo->beginTransaction();
             
@@ -217,6 +229,130 @@ try {
             echo json_encode(['success' => true]);
             break;
 
+        case 'stop_renting':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $listingId = $data['id'] ?? 0;
+
+            // Verify ownership
+            $check = $pdo->prepare("SELECT id, title FROM listings WHERE id = ? AND owner_id = ?");
+            $check->execute([$listingId, $userId]);
+            $listing = $check->fetch();
+            
+            if (!$listing) {
+                throw new Exception('Permission denied or listing not found');
+            }
+
+            $pdo->beginTransaction();
+
+            // 1. Fetch tenant info for notification (before deletion)
+            $tenantStmt = $pdo->prepare("
+                SELECT b.tenant_id
+                FROM bookings b 
+                WHERE b.listing_id = ? AND b.status = 'confirmed'
+            ");
+            $tenantStmt->execute([$listingId]);
+            $tenant = $tenantStmt->fetch();
+
+            // 1. Delete active bookings (confirmed or pending)
+            $delB = $pdo->prepare("DELETE FROM bookings WHERE listing_id = ? AND status IN ('confirmed', 'pending')");
+            $delB->execute([$listingId]);
+
+            // Send system notification if tenant existed (No Email)
+            if ($tenant) {
+                $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'rental_stopped', ?, ?)");
+                $nStmt->execute([
+                    $tenant['tenant_id'], 
+                    $listingId, 
+                    "Chủ nhà đã dừng hợp đồng thuê phòng: '" . $listing['title'] . "'. Vui lòng liên hệ để biết thêm chi tiết."
+                ]);
+            }
+
+            // 2. Set listing status to inactive (Stop Renting)
+            // Or 'available' if just eviction? User said "nút dừng cho thuê", "không cho thuê nữa".
+            // Suggests 'inactive'.
+            $updL = $pdo->prepare("UPDATE listings SET status = 'inactive' WHERE id = ?");
+            $updL->execute([$listingId]);
+            
+            $pdo->commit();
+            
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'report_payment':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            
+            $listingId = $_POST['listing_id'] ?? 0;
+            $message = $_POST['message'] ?? '';
+            
+            if (!$listingId) throw new Exception('Missing ID');
+
+            // Get Owner Email & Info
+            $stmt = $pdo->prepare("
+                SELECT l.title, u.email as owner_email, u.full_name as owner_name 
+                FROM listings l 
+                JOIN users u ON l.owner_id = u.id 
+                WHERE l.id = ?
+            ");
+            $stmt->execute([$listingId]);
+            $info = $stmt->fetch();
+            
+            if (!$info) throw new Exception('Listing not found');
+
+            // Handle Image Upload
+            $imagePath = '';
+            if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../public/uploads/payments/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                
+                $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                $fileName = 'pay_' . time() . '_' . uniqid() . '.' . $ext;
+                $targetFile = $uploadDir . $fileName;
+                
+                if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
+                    $imagePath = $targetFile;
+                }
+            }
+
+            // Get Tenant Info
+            $uStmt = $pdo->prepare("SELECT full_name, phone FROM users WHERE id = ?");
+            $uStmt->execute([$userId]);
+            $tenant = $uStmt->fetch();
+
+            // Send Email
+            $subject = "[Thuê Trọ] Thông báo đóng tiền trọ - " . $info['title'];
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+            $host = $_SERVER['HTTP_HOST'];
+            
+            $body = "
+                <h3>Thông báo đóng tiền trọ</h3>
+                <p><strong>Người gửi:</strong> {$tenant['full_name']} ({$tenant['phone']})</p>
+                <p><strong>Phòng:</strong> {$info['title']}</p>
+                <p><strong>Lời nhắn:</strong><br>" . nl2br(htmlspecialchars($message)) . "</p>
+            ";
+
+            if ($imagePath) {
+                $relPath = str_replace(__DIR__ . '/../../public', '', $imagePath);
+                $publicImgUrl = "$protocol://$host$relPath";
+                $body .= "<p><strong>Chuyển khoản/Chứng từ:</strong> <a href='$publicImgUrl'>Xem hình ảnh</a></p>";
+                $body .= "<img src='$publicImgUrl' style='max-width:500px; border:1px solid #ddd; margin-top:10px;'>";
+            } else {
+                $body .= "<p><em>Không có hình ảnh đính kèm.</em></p>";
+            }
+
+            $sent = sendMail($info['owner_email'], $subject, $body);
+            
+            if ($sent) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to send email']);
+            }
+            break;
+
         default:
             echo json_encode(['error' => 'Invalid action']);
     }
@@ -224,6 +360,7 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    http_response_code(500);
+    ob_end_clean(); // Clean any previous output (warnings/etc)
+    http_response_code(500); // Internal Server Error
     echo json_encode(['error' => $e->getMessage()]);
 }

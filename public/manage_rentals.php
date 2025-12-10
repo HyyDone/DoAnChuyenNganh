@@ -293,6 +293,17 @@ if (!isset($_SESSION['user_id'])) {
                     <hr>
                 </div>
 
+                <!-- Confirmed Tenant Box -->
+                <div id="confirmed-tenant-ui" style="display:none;">
+                    <div class="request-box" style="background:#e6f4ea; border-color:#c3e6cb; color:#0f5132;">
+                        <h4 style="margin-top:0"><i class="fa-solid fa-user-check"></i> Thông tin người thuê</h4>
+                        <p><strong>Họ tên:</strong> <span id="conf-name"></span></p>
+                        <p><strong>SĐT:</strong> <span id="conf-phone"></span></p>
+                        <p><strong>Email:</strong> <span id="conf-email"></span></p>
+                    </div>
+                    <hr>
+                </div>
+
                 <h3>Chỉnh sửa thông tin</h3>
                 <input type="hidden" id="edit-id">
                 <input type="hidden" id="booking-id"> <!-- For confirming -->
@@ -355,6 +366,37 @@ if (!isset($_SESSION['user_id'])) {
             <div id="rental-details" class="editor-form">
                 <h3>Thông tin nhà thuê</h3>
                 <div id="rental-info-content"></div>
+                <div id="rental-actions" style="margin-top:20px;">
+                    <!-- Buttons injected by JS -->
+                </div>
+            </div>
+
+            <!-- PAYMENT FORM -->
+            <div id="payment-form" class="editor-form">
+                <h3><i class="fa-solid fa-money-bill-wave"></i> Đóng tiền trọ</h3>
+                <form onsubmit="submitPayment(event)">
+                    <input type="hidden" id="pay-listing-id">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Phòng</label>
+                        <input type="text" id="pay-title" class="form-input" readonly style="background:#eee;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Lời nhắn</label>
+                        <textarea id="pay-message" class="form-textarea" placeholder="VD: Em gửi tiền trọ tháng 10..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Hình ảnh chuyển khoản</label>
+                        <input type="file" id="pay-image" class="form-input" accept="image/*">
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Gửi thông báo</button>
+                        <button type="button" class="btn" style="background:#eee;" onclick="document.getElementById('payment-form').classList.remove('active'); document.getElementById('rental-details').classList.add('active');">Hủy</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -446,9 +488,14 @@ if (!isset($_SESSION['user_id'])) {
                     } else if (item.booking_status === 'confirmed') {
                         statusClass = 'booked';
                         extraInfo = `
-                            <div class="tenant-info">
-                                <i class="fa-solid fa-user-check" style="margin-right:8px"></i> 
-                                Đang thuê: ${item.tenant_name || 'Người dùng'} (${item.tenant_phone || 'SĐT: N/A'})
+                            <div class="tenant-info" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                                <span style="font-size:0.9rem;">
+                                    <i class="fa-solid fa-user-check" style="margin-right:8px"></i> 
+                                    Đang thuê: ${item.tenant_name || 'Người dùng'} (${item.tenant_phone || 'SĐT: N/A'})
+                                </span>
+                                <button class="btn" style="background:#ffc107; color:#000; padding:4px 12px; font-size:0.75rem; width:auto !important; min-width:60px; height:auto; display:inline-block;" onclick="event.stopPropagation(); stopRenting(${item.id})">
+                                    Dừng
+                                </button>
                             </div>`;
                     } else {
                         extraInfo = `<div style="color:var(--secondary-text); font-size:0.9rem; margin-top:5px;">Trạng thái: ${getStatusText(item.status)}</div>`;
@@ -530,6 +577,8 @@ if (!isset($_SESSION['user_id'])) {
                     <hr>
                 `;
                 
+                let actions = '';
+
                 if (item.booking_status === 'pending') {
                     content += `<p style="color:orange; font-weight:bold;">Yêu cầu thuê của bạn đang chờ chủ nhà xác nhận.</p>`;
                 } else {
@@ -539,9 +588,25 @@ if (!isset($_SESSION['user_id'])) {
                         <p><strong>Ngày bắt đầu:</strong> ${item.start_date || 'N/A'}</p>
                         <p><strong>Ngày kết thúc:</strong> ${item.end_date || 'N/A'}</p>
                     `;
+                    actions = `<button class="btn btn-primary" onclick="showPaymentForm(${item.id}, '${item.title}')">Đóng tiền trọ</button>`;
                 }
                 
                 document.getElementById('rental-info-content').innerHTML = content;
+                document.getElementById('rental-actions').innerHTML = actions;
+            } else if (currentView === 'my_listings') {
+                const form = document.getElementById('listing-editor');
+                 // Check if we need to add "Stop Renting" button
+                 // We can inject it dynamically or toggle visibility
+                // Show/Hide Confirmed Tenant Section
+                const confirmedUI = document.getElementById('confirmed-tenant-ui');
+                if (item.booking_status === 'confirmed') {
+                    confirmedUI.style.display = 'block';
+                    document.getElementById('conf-name').innerText = item.tenant_name || 'Không có tên';
+                    document.getElementById('conf-phone').innerText = item.tenant_phone || 'N/A';
+                    document.getElementById('conf-email').innerText = item.tenant_email || 'N/A';
+                } else {
+                    confirmedUI.style.display = 'none';
+                }
             }
         }
 
@@ -596,7 +661,7 @@ if (!isset($_SESSION['user_id'])) {
                     alert('Lỗi: ' + (result.error || 'Unknown'));
                 }
             } catch (err) {
-                alert('Lỗi kết nối');
+                alert('Lỗi kết nối: ' + err.message);
             }
         }
         
@@ -618,7 +683,7 @@ if (!isset($_SESSION['user_id'])) {
                     alert('Lỗi: ' + (result.error || 'Unknown'));
                 }
             } catch (err) {
-                alert('Lỗi kết nối');
+                alert('Lỗi kết nối: ' + err.message);
             }
         }
 
@@ -651,6 +716,80 @@ if (!isset($_SESSION['user_id'])) {
                 'inactive': 'Tạm ẩn'
             };
             return map[status] || status;
+        }
+
+        async function stopRenting(id) {
+             const targetId = id || selectedId;
+             if (!targetId) return;
+             if (!confirm('Dừng cho thuê nhà này? Hành động này sẽ xóa thông tin người thuê hiện tại và chuyển trạng thái nhà sang "Tạm ẩn".')) return;
+             
+             try {
+                // Correction: URL needs action
+                const res2 = await fetch('/api/rentals.php?action=stop_renting', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: targetId})
+                });
+                
+                const result = await res2.json();
+                if (result.success) {
+                    alert('Đã dừng cho thuê.');
+                    resetRightColumn();
+                    loadData();
+                } else {
+                    alert('Lỗi: ' + (result.message || result.error || 'Unknown'));
+                }
+             } catch(e) { console.error(e); alert('Lỗi kết nối: ' + e.message); }
+        }
+
+        function showPaymentForm(id, title) {
+            document.getElementById('rental-details').classList.remove('active');
+            const form = document.getElementById('payment-form');
+            form.classList.add('active');
+            
+            document.getElementById('pay-listing-id').value = id;
+            document.getElementById('pay-title').value = title;
+            document.getElementById('pay-message').value = '';
+            document.getElementById('pay-image').value = '';
+        }
+
+        async function submitPayment(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = 'Đang gửi...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('listing_id', document.getElementById('pay-listing-id').value);
+            formData.append('message', document.getElementById('pay-message').value);
+            
+            const fileInput = document.getElementById('pay-image');
+            if (fileInput.files[0]) {
+                formData.append('image', fileInput.files[0]);
+            }
+
+            try {
+                const res = await fetch('/api/rentals.php?action=report_payment', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('Đã gửi thông báo đóng tiền thành công!');
+                    document.getElementById('payment-form').classList.remove('active');
+                    document.getElementById('rental-details').classList.add('active');
+                } else {
+                    alert('Lỗi: ' + (result.message || 'Có lỗi xảy ra'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi kết nối');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
     </script>
 </body>

@@ -169,6 +169,26 @@ if (isset($_SESSION['user_id'])) {
             display: flex;
             align-items: center;
         }
+        
+        .btn-favorite {
+            background: none;
+            border: 1px solid #ddd;
+            color: #ccc;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .btn-favorite.active {
+            color: #e91e63;
+            border-color: #e91e63;
+            background: #fff0f5;
+        }
+        .btn-favorite:hover {
+            background: #fff0f5;
+        }
     </style>
 </head>
 <body>
@@ -324,7 +344,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function loadListings() {
+
+let userFavorites = new Set();
+
+async function fetchUserFavorites() {
+    try {
+        const res = await fetch('/api/favorites.php');
+        const data = await res.json();
+        if (data.success && data.favorites) {
+            userFavorites = new Set(data.favorites.map(f => f.id));
+        }
+    } catch (e) {
+        console.error('Error fetching favorites:', e);
+    }
+}
+
+async function loadListings() {
+    await fetchUserFavorites();
+
     const priceMin = document.getElementById('filterPriceMin').value;
     const priceMax = document.getElementById('filterPriceMax').value;
     const city = document.getElementById('filterCity').value;
@@ -351,6 +388,10 @@ function loadListings() {
                 
                 const imagePath = listing.image_path ? listing.image_path : 'https://placehold.co/400x300?text=Phong+Tro'; // Fallback image
                 
+                const isFav = userFavorites.has(listing.id);
+                const heartClass = isFav ? 'active' : '';
+                const heartIcon = isFav ? 'fa-solid' : 'fa-regular';
+
                 item.innerHTML = `
                     <div style="width: 150px; height: 120px; flex-shrink: 0;">
                         <img src="${imagePath}" alt="${listing.title}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px; background: #eee;">
@@ -362,8 +403,11 @@ function loadListings() {
                             <p style="margin: 0 0 5px 0; color: #65676b; font-size: 14px;">📍 ${listing.address}, ${listing.city}</p>
                             <p style="margin: 0; color: #65676b; font-size: 14px;">🏠 ${listing.room_type === 'private' ? 'Riêng tư' : (listing.room_type === 'share' ? 'Ở ghép' : 'Studio')}</p>
                         </div>
-                        <div style="text-align: right;">
+                        <div style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">
                             <a href="/listing_detail.php?id=${listing.id}" style="display: inline-block; background: #e4e6eb; color: #050505; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 14px;">Chi tiết</a>
+                            <button class="btn-favorite ${heartClass}" onclick="toggleFavorite(${listing.id}, this)">
+                                <i class="${heartIcon} fa-heart"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -377,6 +421,40 @@ function loadListings() {
         console.error('Error:', error);
         document.getElementById('listingsContainer').innerHTML = '<p style="text-align:center; color: red;">Lỗi khi tải dữ liệu.</p>';
     });
+}
+
+function toggleFavorite(listingId, btn) {
+    fetch('/api/favorites.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listing_id: listingId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Toggle UI
+            const icon = btn.querySelector('i');
+            if (data.action === 'added') {
+                btn.classList.add('active');
+                icon.classList.remove('fa-regular');
+                icon.classList.add('fa-solid');
+                userFavorites.add(listingId);
+            } else {
+                btn.classList.remove('active');
+                icon.classList.remove('fa-solid');
+                icon.classList.add('fa-regular');
+                userFavorites.delete(listingId);
+            }
+        } else {
+            if (data.message === 'Unauthorized') {
+                alert('Vui lòng đăng nhập để sử dụng tính năng này.');
+                window.location.href = '/login.php';
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        }
+    })
+    .catch(err => console.error(err));
 }
 
 const chatInput = document.getElementById('chatInput');

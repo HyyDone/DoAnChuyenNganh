@@ -136,6 +136,31 @@ if (isset($_SESSION['user_id'])) {
         
         .login-prompt { text-align: center; padding: 20px; background: #f0f2f5; border-radius: 6px; }
         .login-btn { display: inline-block; background: #0866ff; color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; margin-top: 10px; }
+        
+        .btn-favorite {
+            background: none;
+            border: 1px solid #ddd;
+            color: #ccc;
+            padding: 8px 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.2s;
+            font-size: 1.2rem;
+            width: 40px; 
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-favorite.active {
+            color: #e91e63;
+            border-color: #e91e63;
+            background: #fff0f5;
+        }
+        .btn-favorite:hover {
+            background: #fff0f5;
+        }
     </style>
 </head>
 <body>
@@ -185,7 +210,12 @@ if (isset($_SESSION['user_id'])) {
                 </div>
             <?php endif; ?>
 
-            <h1 class="listing-title"><?= htmlspecialchars($listing['title'] ?? 'Không tiêu đề') ?></h1>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h1 class="listing-title"><?= htmlspecialchars($listing['title'] ?? 'Không tiêu đề') ?></h1>
+                <button class="btn-favorite" id="favBtn" onclick="toggleFavorite(<?= $listingId ?>)">
+                    <i class="fa-regular fa-heart"></i>
+                </button>
+            </div>
             <div class="listing-price"><?= number_format($listing['price'] ?? 0) ?> đ/tháng</div>
             
             <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
@@ -262,6 +292,54 @@ if (isset($_SESSION['user_id'])) {
             document.getElementById('mainImage').src = src;
             document.querySelectorAll('.img-thumb').forEach(img => img.classList.remove('active'));
             event.target.classList.add('active');
+        }
+
+        // Check favorite status on load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkFavoriteStatus();
+        });
+
+        async function checkFavoriteStatus() {
+            const btn = document.getElementById('favBtn');
+            const listingId = <?= $listingId ?>;
+            try {
+                const res = await fetch(`/api/favorites.php?listing_id=${listingId}`);
+                const data = await res.json();
+                if (data.success && data.is_favorite) {
+                    btn.classList.add('active');
+                    btn.querySelector('i').classList.replace('fa-regular', 'fa-solid');
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function toggleFavorite(id) {
+            const btn = document.getElementById('favBtn');
+            fetch('/api/favorites.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ listing_id: id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const icon = btn.querySelector('i');
+                    if (data.action === 'added') {
+                        btn.classList.add('active');
+                        icon.classList.replace('fa-regular', 'fa-solid');
+                    } else {
+                        btn.classList.remove('active');
+                        icon.classList.replace('fa-solid', 'fa-regular');
+                    }
+                } else {
+                    if (data.message === 'Unauthorized') {
+                         alert('Vui lòng đăng nhập để sử dụng tính năng này.');
+                         window.location.href = '/login.php?redirect=' + encodeURIComponent(window.location.href);
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                    }
+                }
+            })
+            .catch(err => console.error(err));
         }
 
         async function submitBooking(e) {

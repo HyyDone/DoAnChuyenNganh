@@ -17,14 +17,14 @@ function sendMail($to, $subject, $body) {
         $mail->CharSet    = 'UTF-8';                                // Thiết lập font chữ UTF-8
         $mail->Host       = 'smtp.gmail.com';                       // Set SMTP server
         $mail->SMTPAuth   = true;                                   // Bật SMTP authentication
-        $mail->Username   = 'YOUR_EMAIL@gmail.com';                 // SMTP username
-        $mail->Password   = 'YOUR_APP_PASSWORD';                    // SMTP password
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            // Bật mã hóa TLS
-        $mail->Port       = 465;                                    // Cổng TCP
+        $mail->Username   = 'apimail796@gmail.com';                 
+        $mail->Password   = 'kjnl khxx uzez lhpy';                    
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            
+        $mail->Port       = 465;                                    
 
         // Người nhận
-        $mail->setFrom('YOUR_EMAIL@gmail.com', 'Rental System');
-        $mail->addAddress($to);     // Thêm người nhận
+        $mail->setFrom('apimail796@gmail.com', 'Rental System');
+        $mail->addAddress($to);     
 
         // Nội dung
         $mail->isHTML(true);                                  // Set email format to HTML
