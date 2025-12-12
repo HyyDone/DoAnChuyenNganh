@@ -257,6 +257,9 @@ if (!isset($_SESSION['user_id'])) {
             <button class="nav-btn" onclick="switchView('stats', this)">
                 <i class="fa-solid fa-chart-pie"></i> Thống kê
             </button>
+            <button class="nav-btn" onclick="switchView('contracts', this)">
+                <i class="fa-solid fa-file-contract"></i> Hợp đồng
+            </button>
         </div>
 
         <!-- CENTER COLUMN -->
@@ -398,12 +401,112 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                 </form>
             </div>
+
+            <!-- DAMAGE REPORT FORM (TENANT) -->
+            <div id="damage-report-form" class="editor-form">
+                <h3><i class="fa-solid fa-triangle-exclamation"></i> Báo cáo hư hại</h3>
+                <form onsubmit="submitDamageReport(event)">
+                    <input type="hidden" id="damage-booking-id">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tiêu đề</label>
+                        <input type="text" id="damage-title" class="form-input" placeholder="VD: Hỏng vòi nước..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Mô tả chi tiết</label>
+                        <textarea id="damage-desc" class="form-textarea" placeholder="Mô tả tình trạng hư hỏng..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Chi phí dự kiến (VNĐ)</label>
+                        <input type="number" id="damage-cost" class="form-input" required>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-danger">Gửi báo cáo</button>
+                        <button type="button" class="btn" style="background:#eee;" onclick="document.getElementById('damage-report-form').classList.remove('active'); document.getElementById('rental-details').classList.add('active');">Hủy</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- DAMAGE REPORT DETAIL (OWNER) -->
+            <div id="damage-report-detail" class="editor-form">
+                <div class="request-box" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba;">
+                    <h4 style="margin-top:0"><i class="fa-solid fa-circle-exclamation"></i> Có báo cáo hư hại</h4>
+                    <p><strong>Tiêu đề:</strong> <span id="rpt-title"></span></p>
+                    <p><strong>Mô tả:</strong> <span id="rpt-desc"></span></p>
+                    <p><strong>Chi phí dự kiến:</strong> <span id="rpt-cost" style="color:#dc3545; font-weight:bold;"></span></p>
+                    <div style="margin-top:15px; display:flex; gap:10px;">
+                        <button class="btn btn-success" onclick="confirmDamageReport()">Xác nhận</button>
+                        <button class="btn" onclick="document.getElementById('damage-report-detail').classList.remove('active');">Đóng</button>
+                    </div>
+                </div>
+                <input type="hidden" id="rpt-id">
+            </div>
+
+            <!-- CONTRACT VIEW (RIGHT COLUMN) -->
+            <div id="contract-view" class="editor-form">
+                <h3><i class="fa-solid fa-file-contract"></i> Quản lý hợp đồng</h3>
+                <div id="contract-info-content"></div>
+                <div id="contract-actions-container" style="margin-top:20px;"></div>
+            </div>
         </div>
+    </div>
+
+    <!-- CONTRACT POPUPS (MODALS) -->
+    
+    <!-- CREATE CONTRACT MODAL -->
+    <div id="create-contract-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:#f0f0f0; width:900px; max-width:95%; max-height:95vh; border-radius:8px; padding:20px; display:flex; flex-direction:column; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0">Tạo hợp đồng thuê nhà</h3>
+                <button onclick="document.getElementById('create-contract-modal').style.display='none'" style="border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            
+            <form onsubmit="submitContract(event)" style="display:flex; flex-direction:column; flex:1; overflow:hidden; gap:15px;">
+                <input type="hidden" id="create-contract-booking-id">
+                
+                <!-- A4 Paper Container -->
+                <div style="flex:1; overflow-y:auto; background:#525659; padding:20px; display:flex; justify-content:center;">
+                    <div style="background:white; width:210mm; min-height:297mm; padding:25mm; box-shadow:0 0 10px rgba(0,0,0,0.5); box-sizing:border-box;">
+                         <textarea id="contract-content-input" class="form-textarea" style="width:100%; height:100%; border:none; resize:none; font-family:'Times New Roman', Times, serif; font-size:12pt; line-height:1.5; outline:none; padding:0;"></textarea>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="padding:10px; background:white; border-top:1px solid #ddd; margin-top:0;">
+                    <button type="submit" class="btn btn-primary">Xác nhận tạo hợp đồng</button>
+                    <button type="button" class="btn" style="background:#eee;" onclick="document.getElementById('create-contract-modal').style.display='none'">Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW CONTRACT MODAL -->
+    <div id="view-contract-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+         <div style="background:#f0f0f0; width:900px; max-width:95%; max-height:95vh; border-radius:8px; padding:20px; display:flex; flex-direction:column; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0">Chi tiết hợp đồng</h3>
+                <button onclick="document.getElementById('view-contract-modal').style.display='none'" style="border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <!-- A4 Paper Container -->
+            <div style="flex:1; overflow-y:auto; background:#525659; padding:20px; display:flex; justify-content:center;">
+                <div id="view-contract-content" style="background:white; width:210mm; min-height:297mm; padding:25mm; box-shadow:0 0 10px rgba(0,0,0,0.5); box-sizing:border-box; font-family:'Times New Roman', Times, serif; font-size:12pt; line-height:1.5; white-space:pre-wrap;"></div>
+            </div>
+
+            <input type="hidden" id="view-contract-id">
+            <div class="btn-group" style="padding:10px; background:white; border-top:1px solid #ddd; margin-top:0;">
+                <button id="btn-sign-contract" type="button" class="btn btn-success" onclick="signContract()" style="display:none;">Xác nhận (Ký)</button>
+                <button type="button" class="btn" style="background:#eee;" onclick="document.getElementById('view-contract-modal').style.display='none'">Thoát</button>
+            </div>
+         </div>
     </div>
 
     <?php include __DIR__ . '/includes/footer.php'; ?>
 
     <script>
+        const USER_ID = <?= $_SESSION['user_id'] ?>;
         let currentView = 'my_listings';
         let currentItems = [];
         let selectedId = null;
@@ -433,6 +536,7 @@ if (!isset($_SESSION['user_id'])) {
             const titles = {
                 'my_listings': 'Danh sách nhà cho thuê',
                 'my_rentals': 'Nhà đang thuê',
+                'contracts': 'Quản lý hợp đồng',
                 'stats': 'Thống kê'
             };
             document.querySelector('.section-title').innerText = titles[view];
@@ -457,7 +561,11 @@ if (!isset($_SESSION['user_id'])) {
             }
 
             try {
-                const action = currentView === 'my_listings' ? 'get_my_listings' : 'get_my_rentals';
+                let action = '';
+                if (currentView === 'my_listings') action = 'get_my_listings';
+                else if (currentView === 'my_rentals') action = 'get_my_rentals';
+                else if (currentView === 'contracts') action = 'get_contracts';
+                
                 const res = await fetch(`/api/rentals.php?action=${action}`);
                 const data = await res.json();
                 currentItems = data;
@@ -588,11 +696,52 @@ if (!isset($_SESSION['user_id'])) {
                         <p><strong>Ngày bắt đầu:</strong> ${item.start_date || 'N/A'}</p>
                         <p><strong>Ngày kết thúc:</strong> ${item.end_date || 'N/A'}</p>
                     `;
-                    actions = `<button class="btn btn-primary" onclick="showPaymentForm(${item.id}, '${item.title}')">Đóng tiền trọ</button>`;
+                    actions = `
+                        <button class="btn btn-primary" onclick="showPaymentForm(${item.id}, '${item.title}')">Đóng tiền trọ</button>
+                        <button class="btn btn-danger" style="margin-top:10px;" onclick="showDamageForm(${item.booking_id})">Báo cáo hư hại</button>
+                    `;
                 }
                 
                 document.getElementById('rental-info-content').innerHTML = content;
                 document.getElementById('rental-actions').innerHTML = actions;
+                document.getElementById('rental-info-content').innerHTML = content;
+                document.getElementById('rental-actions').innerHTML = actions;
+
+            } else if (currentView === 'contracts') {
+                 const view = document.getElementById('contract-view');
+                 view.classList.add('active');
+                 
+                 let html = `
+                    <p><strong>Nhà:</strong> ${item.title}</p>
+                    <p><strong>Địa chỉ:</strong> ${item.address}, ${item.district}, ${item.city}</p>
+                    <p><strong>Chủ nhà:</strong> ${item.owner_name}</p>
+                    <p><strong>Người thuê:</strong> ${item.tenant_name}</p>
+                    <p><strong>Thời hạn:</strong> ${item.start_date} - ${item.end_date}</p>
+                    <hr>
+                 `;
+                 
+                 let btns = '';
+                 
+                 if (!item.contract_id) {
+                     // No contract -> Create
+                     // Only owner can create? The API allows owner.
+                     // We need to know if current user is owner.
+                     // The item has both names. But we can infer from session?
+                     // Actually, allow button, backend verifies permission.
+                     // But strictly, only owner creates.
+                     // Let's assume Owner for "Create".
+                     btns = `<button class="btn btn-primary" onclick="openCreateContract(${item.booking_id})">Làm hợp đồng</button>`;
+                 } else {
+                     // Has contract -> View / Delete
+                     btns = `
+                        <button class="btn btn-primary" onclick="viewContract(${item.contract_id})">Xem hợp đồng</button>
+                        <button class="btn btn-danger" onclick="deleteContract(${item.contract_id})">Xóa hợp đồng</button>
+                     `;
+                 }
+                 
+                 document.getElementById('contract-info-content').innerHTML = html;
+                 document.getElementById('contract-actions-container').innerHTML = btns;
+
             } else if (currentView === 'my_listings') {
                 const form = document.getElementById('listing-editor');
                  // Check if we need to add "Stop Renting" button
@@ -790,6 +939,270 @@ if (!isset($_SESSION['user_id'])) {
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
+        }
+
+        // --- Damage Reporting Logic ---
+
+        function showDamageForm(bookingId) {
+            if (!bookingId) {
+                alert('Không tìm thấy thông tin hợp đồng.');
+                return;
+            }
+            document.getElementById('rental-details').classList.remove('active');
+            document.getElementById('damage-report-form').classList.add('active');
+            
+            document.getElementById('damage-booking-id').value = bookingId;
+            document.getElementById('damage-title').value = '';
+            document.getElementById('damage-desc').value = '';
+            document.getElementById('damage-cost').value = '';
+        }
+
+        async function submitDamageReport(e) {
+            e.preventDefault();
+            if (!confirm('Gửi báo cáo này cho chủ nhà?')) return;
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = 'Đang gửi...';
+            btn.disabled = true;
+
+            const data = {
+                booking_id: document.getElementById('damage-booking-id').value,
+                title: document.getElementById('damage-title').value,
+                description: document.getElementById('damage-desc').value,
+                cost: document.getElementById('damage-cost').value
+            };
+
+            try {
+                const res = await fetch('/api/rentals.php?action=report_damage', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('Báo cáo đã gửi thành công!');
+                    document.getElementById('damage-report-form').classList.remove('active');
+                    document.getElementById('rental-details').classList.add('active');
+                } else {
+                    alert('Lỗi: ' + (result.message || result.error || 'Unknown'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi kết nối');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Check for report view param
+        const rptId = new URLSearchParams(window.location.search).get('view_report');
+        if (rptId) {
+            loadDamageReport(rptId);
+        }
+
+        async function loadDamageReport(id) {
+            try {
+                const res = await fetch(`/api/rentals.php?action=get_damage_report&id=${id}`);
+                const data = await res.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                const popup = document.getElementById('damage-report-detail');
+                // Ensure right column is visible/reset
+                 // Force switch to my_listings if owner? user might be owner.
+                 // We don't change view automatically unless needed, but popup needs to be in DOM.
+                 // It is in layout-right.
+                resetRightColumn(); // Clear others
+                popup.classList.add('active');
+
+                document.getElementById('rpt-id').value = data.id;
+                document.getElementById('rpt-title').innerText = data.title;
+                document.getElementById('rpt-desc').innerText = data.description;
+                document.getElementById('rpt-cost').innerText = parseInt(data.cost).toLocaleString() + ' đ';
+                
+                if (data.status !== 'pending') {
+                    // Hide confirm button if not pending
+                     const btn = popup.querySelector('.btn-success');
+                     if(btn) btn.style.display = 'none';
+                }
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function confirmDamageReport() {
+            if (!confirm('Xác nhận báo cáo hư hại này?')) return;
+            const id = document.getElementById('rpt-id').value;
+            
+            try {
+                const res = await fetch('/api/rentals.php?action=confirm_damage_report', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({report_id: id})
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('Đã xác nhận!');
+                    document.getElementById('damage-report-detail').classList.remove('active');
+                    // Maybe refresh?
+                } else {
+                    alert('Lỗi: ' + (result.error || 'Unknown'));
+                }
+            } catch (e) {
+                alert('Lỗi kết nối');
+            }
+        }
+
+        // --- CONTRACTS LOGIC ---
+        
+        const CONTRACT_TEMPLATE = `HỢP ĐỒNG THUÊ NHÀ
+1. Thông tin các bên
+• Bên cho thuê: ..........................................................
+  CCCD: ....................   SĐT: ..............................
+• Bên thuê: ................................................................
+  CCCD: ....................   SĐT: ..............................
+2. Thông tin nhà/ phòng cho thuê
+Địa chỉ: ........................................................................
+Diện tích: ..................... m²
+Tình trạng bàn giao: ............................................................
+3. Thời hạn thuê
+Từ ngày ....... đến ngày .......
+Gia hạn: .......................................................................
+4. Giá thuê và thanh toán
+Giá thuê: ..................... VNĐ/tháng
+Bao gồm phí: điện/nước/internet/... (ghi rõ)
+Hình thức thanh toán: tiền mặt / chuyển khoản.
+5. Tiền đặt cọc
+Số tiền cọc: ............................... VNĐ
+Thời điểm và điều kiện hoàn trả: ..............................................
+6. Quyền và nghĩa vụ của các bên
+• Bên cho thuê: bảo trì kết cấu lớn, đảm bảo quyền sử dụng hợp pháp...
+• Bên thuê: giữ gìn tài sản, không cho thuê lại khi chưa được phép...
+7. Tài sản đi kèm
+Danh sách tài sản bàn giao:
+....................................................................................
+8. Chấm dứt hợp đồng
+Các trường hợp chấm dứt: hết hạn, vi phạm nghĩa vụ, thỏa thuận...
+9. Điều khoản chung
+Hai bên cam kết tuân thủ và cùng giải quyết tranh chấp theo pháp luật.
+10. Chữ ký
+Bên cho thuê: .............................................
+Bên thuê: ....................................................`;
+
+        function openCreateContract(bookingId) {
+            document.getElementById('create-contract-modal').style.display = 'flex';
+            document.getElementById('create-contract-booking-id').value = bookingId;
+            document.getElementById('contract-content-input').value = CONTRACT_TEMPLATE;
+        }
+
+        async function submitContract(e) {
+            e.preventDefault();
+            if(!confirm('Xác nhận tạo hợp đồng?')) return;
+            
+            const data = {
+                booking_id: document.getElementById('create-contract-booking-id').value,
+                content: document.getElementById('contract-content-input').value
+            };
+            
+            try {
+                const res = await fetch('/api/rentals.php?action=create_contract', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if(result.success) {
+                    alert('Hợp đồng đã được tạo và gửi cho người thuê!');
+                    document.getElementById('create-contract-modal').style.display = 'none';
+                    loadData();
+                } else {
+                    alert('Lỗi: ' + (result.error || 'Unknown'));
+                }
+            } catch(e) { alert('Lỗi kết nối'); }
+        }
+
+        async function viewContract(id) {
+            try {
+                const res = await fetch(`/api/rentals.php?action=get_contract_details&id=${id}`);
+                const data = await res.json();
+                if(data.error) {
+                    alert(data.error); return;
+                }
+                
+                document.getElementById('view-contract-modal').style.display = 'flex';
+                document.getElementById('view-contract-content').innerText = data.content;
+                document.getElementById('view-contract-id').value = id;
+                
+                // If I am tenant and status is pending, show Sign button
+                // How do I know if I am tenant? 
+                // data object should help. But session user id is not in JS.
+                // However, the action 'sign_contract' checks backend.
+                // We can just show the button if status is pending? 
+                // Or try to detect.
+                // data.tenant_id is from backend. We don't have user_id locally easily unless we inject it.
+                // Let's inject user_id in PHP at the top.
+                
+                const btnSign = document.getElementById('btn-sign-contract');
+                if (data.status === 'pending') {
+                    // Check if current user is tenant
+                   if (window.USER_ID && window.USER_ID == data.tenant_id) {
+                        btnSign.style.display = 'inline-block';
+                   } else {
+                       btnSign.style.display = 'none';
+                   }
+                } else {
+                    btnSign.style.display = 'none';
+                }
+                
+            } catch(e) { alert('Lỗi kết nối'); }
+        }
+
+        async function signContract() {
+            if(!confirm('Tôi đã đọc và đồng ý ký vào hợp đồng này.')) return;
+            const id = document.getElementById('view-contract-id').value;
+            
+            try {
+                const res = await fetch('/api/rentals.php?action=sign_contract', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: id})
+                });
+                const result = await res.json();
+                if(result.success) {
+                    alert('Đã ký hợp đồng!');
+                    document.getElementById('view-contract-modal').style.display = 'none';
+                    loadData();
+                } else {
+                    alert('Lỗi: ' + (result.error || 'Unknown'));
+                }
+            } catch(e) { alert('Lỗi kết nối'); }
+        }
+
+        async function deleteContract(id) {
+            if(!confirm('Xóa hợp đồng này? Hành động này không thể hoàn tác.')) return;
+             try {
+                const res = await fetch('/api/rentals.php?action=delete_contract', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: id})
+                });
+                const result = await res.json();
+                if(result.success) {
+                    alert('Đã xóa hợp đồng!');
+                    resetRightColumn();
+                    loadData();
+                } else {
+                    alert('Lỗi: ' + (result.error || 'Unknown'));
+                }
+            } catch(e) { alert('Lỗi kết nối'); }
         }
     </script>
 </body>

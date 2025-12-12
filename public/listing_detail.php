@@ -109,10 +109,58 @@ if (isset($_SESSION['user_id'])) {
         /* Detail Styles */
         .listing-title { font-size: 1.8rem; margin: 0 0 10px 0; color: #333; }
         .listing-price { color: #dc3545; font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; }
-        .listing-img-main { width: 100%; height: 400px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+        /* Carousel Styles */
+        .carousel-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .carousel-slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        .carousel-slide.active {
+            display: block;
+        }
+        .carousel-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Contain to see full image without cropping in black box */
+        }
+        
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+            z-index: 2;
+        }
+        .carousel-btn:hover { background: rgba(0,0,0,0.8); }
+        .carousel-btn.prev { left: 10px; }
+        .carousel-btn.next { right: 10px; }
+
         .img-grid { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
-        .img-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
-        .img-thumb:hover, .img-thumb.active { opacity: 1; border: 2px solid #0866ff; }
+        .img-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; border: 2px solid transparent;}
+        .img-thumb:hover, .img-thumb.active { opacity: 1; border-color: #0866ff; }
+        
+        /* ... existing styles ... */
         
         .info-row { display: flex; margin-bottom: 10px; color: #555; }
         .info-icon { width: 25px; text-align: center; margin-right: 10px; color: #0866ff; }
@@ -194,18 +242,37 @@ if (isset($_SESSION['user_id'])) {
 
         <!-- CENTER: Detail -->
         <div class="layout-center">
-            <?php 
-                $mainImage = !empty($images) ? $images[0] : 'assets/default-room.jpg';
-                if ($mainImage && $mainImage[0] !== '/') $mainImage = '/' . $mainImage;
-            ?>
-            <img src="<?= htmlspecialchars($mainImage) ?>" id="mainImage" class="listing-img-main" alt="Main Image">
             
-            <?php if (count($images) > 1): ?>
+            <!-- Carousel -->
+            <div class="carousel-container" id="mainCarousel">
+                <?php 
+                    $safeImages = [];
+                    if (!empty($images)) {
+                        foreach ($images as $img) {
+                             $safeImages[] = ($img && $img[0] !== '/') ? '/' . $img : $img;
+                        }
+                    } else {
+                        $safeImages[] = 'assets/default-room.jpg';
+                    }
+                ?>
+                
+                <?php foreach ($safeImages as $index => $imgSrc): ?>
+                    <div class="carousel-slide <?= $index === 0 ? 'active' : '' ?>">
+                        <img src="<?= htmlspecialchars($imgSrc) ?>" alt="Slide <?= $index + 1 ?>">
+                    </div>
+                <?php endforeach; ?>
+
+                <?php if (count($safeImages) > 1): ?>
+                    <button class="carousel-btn prev" onclick="moveSlide(-1)">&#10094;</button>
+                    <button class="carousel-btn next" onclick="moveSlide(1)">&#10095;</button>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Thumbnails -->
+            <?php if (count($safeImages) > 1): ?>
                 <div class="img-grid">
-                    <?php foreach ($images as $img): 
-                        $thumbPath = ($img && $img[0] !== '/') ? '/' . $img : $img;
-                    ?>
-                        <img src="<?= htmlspecialchars($thumbPath) ?>" class="img-thumb" onclick="changeImage(this.src)" alt="Thumb">
+                    <?php foreach ($safeImages as $index => $imgSrc): ?>
+                        <img src="<?= htmlspecialchars($imgSrc) ?>" class="img-thumb <?= $index === 0 ? 'active' : '' ?>" onclick="currentSlide(<?= $index ?>)" alt="Thumb">
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -288,10 +355,36 @@ if (isset($_SESSION['user_id'])) {
     <?php include __DIR__ . '/includes/footer.php'; ?>
     
     <script>
-        function changeImage(src) {
-            document.getElementById('mainImage').src = src;
-            document.querySelectorAll('.img-thumb').forEach(img => img.classList.remove('active'));
-            event.target.classList.add('active');
+        // Carousel Logic
+        let slideIndex = 0;
+        const slides = document.getElementsByClassName("carousel-slide");
+        const thumbs = document.getElementsByClassName("img-thumb");
+        
+        function showSlide(n) {
+            if (slides.length === 0) return;
+            
+            if (n >= slides.length) slideIndex = 0;
+            if (n < 0) slideIndex = slides.length - 1;
+            
+            // Hide all
+            for (let i = 0; i < slides.length; i++) {
+                slides[i].classList.remove("active");
+                if(thumbs.length > i) thumbs[i].classList.remove("active");
+            }
+            
+            // Show current
+            slides[slideIndex].classList.add("active");
+            if(thumbs.length > slideIndex) thumbs[slideIndex].classList.add("active");
+        }
+        
+        function moveSlide(n) {
+            slideIndex += n;
+            showSlide(slideIndex);
+        }
+        
+        function currentSlide(n) {
+            slideIndex = n;
+            showSlide(slideIndex);
         }
 
         // Check favorite status on load

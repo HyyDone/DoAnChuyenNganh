@@ -168,6 +168,14 @@ if (!function_exists('isActive')) {
                 link = '/manage_rentals.php'; // Owner
             } else if (notif.type === 'booking_confirmed') {
                 link = '/manage_rentals.php?view=my_rentals'; // Tenant
+            } else if (notif.type === 'damage_report') {
+                link = '/manage_rentals.php?view=my_listings&view_report=' + notif.reference_id; // Owner
+            } else if (notif.type === 'damage_confirmed') {
+                link = '/manage_rentals.php?view=my_rentals&view_report=' + notif.reference_id; // Tenant
+            } else if (notif.type === 'contract_created') {
+                link = '/manage_rentals.php?view=contracts'; // Tenant
+            } else if (notif.type === 'contract_signed') {
+                link = '/manage_rentals.php?view=contracts'; // Owner
             }
             
             const html = `

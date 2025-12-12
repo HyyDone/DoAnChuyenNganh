@@ -233,8 +233,9 @@ include __DIR__ . '/includes/header.php';
                     </select>
                 </div>
                 <div style="margin-bottom: 10px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Hình ảnh</label>
-                    <input type="file" name="image" accept="image" style="width: 100%;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Hình ảnh (Có thể chọn nhiều)</label>
+                    <input type="file" id="listingImagesInput" name="images[]" multiple accept="image/*" style="width: 100%;" onchange="previewListingImages(this)">
+                    <div id="listingImagePreview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 10px;"></div>
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Mô tả</label>
@@ -319,9 +320,33 @@ include __DIR__ . '/includes/header.php';
 document.addEventListener('DOMContentLoaded', function() {
     loadListings();
 
+    // Image Preview for Listing Form
+    window.previewListingImages = function(input) {
+        const container = document.getElementById('listingImagePreview');
+        container.innerHTML = '';
+        if (input.files) {
+            Array.from(input.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width: 100%; height: 80px; object-fit: cover; border-radius: 4px;';
+                    container.appendChild(img);
+                }
+                reader.readAsDataURL(file);
+            });
+        }
+    }
+
     document.getElementById('postListingForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
+        // Ensure files are appended (though standard FormData does this for input name="images[]")
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerText;
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Đang đăng...';
 
         fetch('/api/listings.php', {
             method: 'POST',
@@ -329,16 +354,27 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = originalText;
+            
             if (data.success) {
                 alert('Đăng tin thành công!');
                 this.reset();
+                document.getElementById('listingImagePreview').innerHTML = ''; // Clear preview
                 loadListings();
             } else {
-                alert('Lỗi: ' + (data.message || 'Không thể đăng tin'));
+                if (data.message === 'Unauthorized') {
+                    alert('Bạn cần đăng nhập để đăng tin.');
+                    window.location.href = '/login.php';
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể đăng tin'));
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            submitBtn.disabled = false;
+            submitBtn.innerText = originalText;
             alert('Đã xảy ra lỗi khi đăng tin.');
         });
     });

@@ -78,8 +78,32 @@ if ($method === 'GET') {
         $stmt->execute([$owner_id, $title, $description, $price, $address, $city, $room_type]);
         $listing_id = $pdo->lastInsertId();
 
-        // Handle Image Upload
-        if (!empty($_FILES['image']['name'])) {
+        // Handle Image Upload (Multiple)
+        if (!empty($_FILES['images']['name'][0])) {
+            $target_dir = __DIR__ . "/../../public/uploads/listings/";
+            if (!file_exists($target_dir)) {
+                mkdir($target_dir, 0777, true);
+            }
+            
+            $stmt_img = $pdo->prepare("INSERT INTO listing_images (listing_id, file_path, is_cover) VALUES (?, ?, ?)");
+            
+            $fileCount = count($_FILES['images']['name']);
+            for ($i = 0; $i < $fileCount; $i++) {
+                if ($_FILES['images']['error'][$i] === UPLOAD_ERR_OK) {
+                    $file_extension = pathinfo($_FILES['images']['name'][$i], PATHINFO_EXTENSION);
+                    $new_filename = uniqid() . '_' . $i . '.' . $file_extension;
+                    $target_file = $target_dir . $new_filename;
+                    $db_path = "uploads/listings/" . $new_filename; // relative path for DB
+
+                    if (move_uploaded_file($_FILES['images']['tmp_name'][$i], $target_file)) {
+                        $is_cover = ($i === 0) ? 1 : 0; // First image is cover
+                        $stmt_img->execute([$listing_id, $db_path, $is_cover]);
+                    }
+                }
+            }
+        }
+        // Fallback for single 'image' (legacy)
+        elseif (!empty($_FILES['image']['name'])) {
             $target_dir = __DIR__ . "/../../public/uploads/listings/";
             if (!file_exists($target_dir)) {
                 mkdir($target_dir, 0777, true);
@@ -88,7 +112,7 @@ if ($method === 'GET') {
             $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
             $new_filename = uniqid() . '.' . $file_extension;
             $target_file = $target_dir . $new_filename;
-            $db_path = "/uploads/listings/" . $new_filename;
+            $db_path = "uploads/listings/" . $new_filename;
 
             if (move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
                 $stmt_img = $pdo->prepare("INSERT INTO listing_images (listing_id, file_path, is_cover) VALUES (?, ?, 1)");

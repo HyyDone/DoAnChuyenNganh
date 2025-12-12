@@ -43,7 +43,7 @@ try {
         case 'get_my_rentals':
             // Fetch listings where user is the tenant
             $stmt = $pdo->prepare("
-                SELECT l.*, 
+                SELECT l.*, b.id as booking_id,
                        (SELECT file_path FROM listing_images WHERE listing_id = l.id AND is_cover = 1 LIMIT 1) as cover_image,
                        b.status as booking_status, b.start_date, b.end_date,
                        u.full_name as owner_name, u.phone as owner_phone
@@ -351,6 +351,265 @@ try {
             } else {
                 echo json_encode(['success' => false, 'message' => 'Failed to send email']);
             }
+            break;
+
+        case 'report_damage':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $bookingId = $data['booking_id'] ?? 0;
+            $title = $data['title'] ?? '';
+            $desc = $data['description'] ?? '';
+            $cost = $data['cost'] ?? 0;
+
+            if (!$bookingId || !$title || !$cost) {
+                throw new Exception('Missing required fields');
+            }
+
+            // Verify tenant ownership
+            $stmt = $pdo->prepare("
+                SELECT b.id, b.listing_id, l.owner_id, l.title as listing_title, u.full_name as tenant_name 
+                FROM bookings b
+                JOIN listings l ON b.listing_id = l.id
+                JOIN users u ON b.tenant_id = u.id
+                WHERE b.id = ? AND b.tenant_id = ?
+            ");
+            $stmt->execute([$bookingId, $userId]);
+            $info = $stmt->fetch();
+
+            if (!$info) {
+                throw new Exception('Booking not found or permission denied');
+            }
+
+            // Insert Report
+            $ins = $pdo->prepare("INSERT INTO damage_reports (booking_id, reporter_id, title, description, cost, status) VALUES (?, ?, ?, ?, ?, 'pending')");
+            $ins->execute([$bookingId, $userId, $title, $desc, $cost]);
+            $reportId = $pdo->lastInsertId();
+
+            // Notify Owner
+            $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'damage_report', ?, ?)");
+            $msg = "Người thuê {$info['tenant_name']} báo cáo hư hại tại '{$info['listing_title']}': $title. Phí dự kiến: " . number_format($cost) . "đ";
+            $nStmt->execute([$info['owner_id'], $reportId, $msg]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_damage_report':
+            $reportId = $_GET['id'] ?? 0;
+            
+            // Verify access (Reporter OR Owner)
+            // Join through bookings -> listings to get owner_id
+            $stmt = $pdo->prepare("
+                SELECT dr.*, b.tenant_id, l.owner_id
+                FROM damage_reports dr
+                JOIN bookings b ON dr.booking_id = b.id
+                JOIN listings l ON b.listing_id = l.id
+                WHERE dr.id = ?
+            ");
+            $stmt->execute([$reportId]);
+            $report = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$report) {
+                throw new Exception('Report not found');
+            }
+
+            // Check permission
+            if ($report['tenant_id'] != $userId && $report['owner_id'] != $userId) {
+                throw new Exception('Permission denied');
+            }
+            
+            echo json_encode($report);
+            break;
+
+        case 'confirm_damage_report':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $reportId = $data['report_id'] ?? 0;
+
+            // Get Report & Verify Owner
+            // Report -> Booking -> Listing -> Owner
+            $stmt = $pdo->prepare("
+                SELECT dr.*, b.tenant_id, l.owner_id, l.title as listing_title
+                FROM damage_reports dr
+                JOIN bookings b ON dr.booking_id = b.id
+                JOIN listings l ON b.listing_id = l.id
+                WHERE dr.id = ?
+            ");
+            $stmt->execute([$reportId]);
+            $report = $stmt->fetch();
+
+            if (!$report) {
+                throw new Exception('Report not found');
+            }
+
+            if ($report['owner_id'] != $userId) {
+                throw new Exception('Permission denied (Only owner can confirm)');
+            }
+
+            if ($report['status'] !== 'pending') {
+                throw new Exception('Report already processed');
+            }
+
+            // Update Status
+            $upd = $pdo->prepare("UPDATE damage_reports SET status = 'confirmed' WHERE id = ?");
+            $upd->execute([$reportId]);
+
+            // Notify Tenant
+            $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'damage_confirmed', ?, ?)");
+            $msg = "Chủ nhà đã XÁC NHẬN báo cáo hư hại '{$report['title']}' tại '{$report['listing_title']}'.";
+            $nStmt->execute([$report['tenant_id'], $reportId, $msg]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+            echo json_encode(['success' => true]);
+            break;
+
+        // --- CONTRACT ACTIONS ---
+
+        case 'get_contracts':
+            // Fetch contracts/bookings for owner or tenant
+            // For owner: Get all confirmed bookings for their listings
+            // For tenant: Get all confirmed bookings where they are tenant
+            
+            $sql = "
+                SELECT b.id as booking_id, b.start_date, b.end_date,
+                       l.title, l.price, l.address, l.district, l.city,
+                       u_tenant.full_name as tenant_name, u_owner.full_name as owner_name,
+                       c.id as contract_id, c.status as contract_status, c.created_at as contract_created_at
+                FROM bookings b
+                JOIN listings l ON b.listing_id = l.id
+                JOIN users u_tenant ON b.tenant_id = u_tenant.id
+                JOIN users u_owner ON l.owner_id = u_owner.id
+                LEFT JOIN contracts c ON b.id = c.booking_id
+                WHERE b.status = 'confirmed' AND (l.owner_id = ? OR b.tenant_id = ?)
+                ORDER BY b.created_at DESC
+            ";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$userId, $userId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode($rows);
+            break;
+
+        case 'create_contract':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $bookingId = $data['booking_id'] ?? 0;
+            $content = $data['content'] ?? '';
+
+            if (!$bookingId || !$content) throw new Exception('Missing data');
+
+            // Verify Owner
+            $check = $pdo->prepare("
+                SELECT l.owner_id, u.id as tenant_id, l.title
+                FROM bookings b
+                JOIN listings l ON b.listing_id = l.id
+                JOIN users u ON b.tenant_id = u.id
+                WHERE b.id = ?
+            ");
+            $check->execute([$bookingId]);
+            $info = $check->fetch();
+
+            if (!$info || $info['owner_id'] != $userId) {
+                throw new Exception('Permission denied');
+            }
+
+            // Insert
+            $ins = $pdo->prepare("INSERT INTO contracts (booking_id, content, status) VALUES (?, ?, 'pending')");
+            $ins->execute([$bookingId, $content]);
+            $contractId = $pdo->lastInsertId();
+
+            // Notify Tenant
+            $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'contract_created', ?, ?)");
+            $msg = "Chủ nhà đã tạo hợp đồng thuê cho phòng '{$info['title']}'. Vui lòng xem và xác nhận.";
+            $nStmt->execute([$info['tenant_id'], $contractId, $msg]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_contract_details':
+            $id = $_GET['id'] ?? 0;
+            $stmt = $pdo->prepare("
+                SELECT c.*, l.owner_id, b.tenant_id
+                FROM contracts c
+                JOIN bookings b ON c.booking_id = b.id
+                JOIN listings l ON b.listing_id = l.id
+                WHERE c.id = ?
+            ");
+            $stmt->execute([$id]);
+            $contract = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$contract) throw new Exception('Contract not found');
+            if ($contract['owner_id'] != $userId && $contract['tenant_id'] != $userId) {
+                throw new Exception('Permission denied');
+            }
+            
+            echo json_encode($contract);
+            break;
+
+        case 'sign_contract':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? 0;
+
+            // Verify Tenant
+            $stmt = $pdo->prepare("
+                SELECT c.*, l.owner_id, b.tenant_id, l.title
+                FROM contracts c
+                JOIN bookings b ON c.booking_id = b.id
+                JOIN listings l ON b.listing_id = l.id
+                WHERE c.id = ?
+            ");
+            $stmt->execute([$id]);
+            $contract = $stmt->fetch();
+
+            if (!$contract) throw new Exception('Not found');
+            if ($contract['tenant_id'] != $userId) throw new Exception('Permission denied');
+            if ($contract['status'] == 'signed') throw new Exception('Already signed');
+
+            // Update
+            $upd = $pdo->prepare("UPDATE contracts SET status = 'signed', signed_at = NOW() WHERE id = ?");
+            $upd->execute([$id]);
+
+            // Notify Owner
+            $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'contract_signed', ?, ?)");
+            $msg = "Người thuê đã XÁC NHẬN hợp đồng thuê phòng '{$contract['title']}'.";
+            $nStmt->execute([$contract['owner_id'], $id, $msg]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'delete_contract':
+             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? 0;
+            
+            // Verify Owner
+             $stmt = $pdo->prepare("
+                SELECT c.*, l.owner_id
+                FROM contracts c
+                JOIN bookings b ON c.booking_id = b.id
+                JOIN listings l ON b.listing_id = l.id
+                WHERE c.id = ?
+            ");
+            $stmt->execute([$id]);
+            $contract = $stmt->fetch();
+            
+            if (!$contract || $contract['owner_id'] != $userId) throw new Exception('Permission denied');
+            
+            $del = $pdo->prepare("DELETE FROM contracts WHERE id = ?");
+            $del->execute([$id]);
+            
+            echo json_encode(['success' => true]);
             break;
 
         default:

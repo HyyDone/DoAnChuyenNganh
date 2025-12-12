@@ -11,6 +11,7 @@ if ($method === 'POST') {
         echo json_encode(['error' => 'Unauthorized']);
         exit;
     }
+//    $_SESSION['user_id'] = 1; // Hardcode for testing
 
     // Check for DELETE action (simulated via POST) or actual DELETE method if configured
     $action = $_GET['action'] ?? '';
@@ -25,7 +26,7 @@ if ($method === 'POST') {
         }
 
         try {
-            // Verify ownership and get image path
+            // Verify ownership
             $stmt = $pdo->prepare("SELECT user_id, image FROM posts WHERE id = ?");
             $stmt->execute([$postId]);
             $post = $stmt->fetch();
@@ -40,12 +41,26 @@ if ($method === 'POST') {
                 exit;
             }
 
-            // Delete image if exists
-            if ($post['image'] && file_exists(__DIR__ . '/../' . $post['image'])) {
-                unlink(__DIR__ . '/../' . $post['image']);
+            // Get all images from post_images to delete files
+            $stmtImgs = $pdo->prepare("SELECT file_path FROM post_images WHERE post_id = ?");
+            $stmtImgs->execute([$postId]);
+            $images = $stmtImgs->fetchAll(PDO::FETCH_COLUMN);
+
+            // Also check the old single image column
+            if (!empty($post['image'])) {
+                $images[] = $post['image'];
+            }
+            
+            $uniqueImages = array_unique($images);
+
+            // Delete files
+            foreach ($uniqueImages as $imgInfo) {
+                if ($imgInfo && file_exists(__DIR__ . '/../' . $imgInfo)) {
+                    unlink(__DIR__ . '/../' . $imgInfo);
+                }
             }
 
-            // Delete post
+            // Delete post (cascade will remove DB records)
             $stmt = $pdo->prepare("DELETE FROM posts WHERE id = ?");
             $stmt->execute([$postId]);
 
@@ -57,46 +72,100 @@ if ($method === 'POST') {
         exit;
     }
 
+    // Check for POST max size violation
+    if (empty($_FILES) && empty($_POST) && isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
+        $maxSize = ini_get('post_max_size');
+        echo json_encode([
+            'success' => false, 
+            'error' => "Kích thước dữ liệu gửi lên quá lớn (Vượt quá $maxSize). Vui lòng giảm số lượng hoặc dung lượng ảnh."
+        ]);
+        exit;
+    }
+
     // Handle Create or Update
     $postId = $_POST['id'] ?? null;
     $content = trim($_POST['content'] ?? '');
-    $removeOldImage = isset($_POST['remove_image']) && $_POST['remove_image'] === 'true';
+    // $removeOldImage = isset($_POST['remove_image']) && $_POST['remove_image'] === 'true'; // Deprecated for multi-image logic in this pass, or need better handling
     
-    // Handle Image Upload
-    $imagePath = null;
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../uploads/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
+    // Handle Image Uploads
+    $uploadedImages = [];
+    $warnings = [];
+    $uploadDir = __DIR__ . '/../uploads/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    // Adapt to accept multiple files 'images[]' OR single 'image' (legacy support)
+    $filesToProcess = [];
+    
+    // Check for 'images' array
+    if (isset($_FILES['images'])) {
+        $logFile = __DIR__ . '/../debug_log.txt';
+        $logMsg = date('[Y-m-d H:i:s] ') . "Received images count: " . count($_FILES['images']['name']) . PHP_EOL;
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
         
-        $fileTmpPath = $_FILES['image']['tmp_name'];
-        $fileName = $_FILES['image']['name'];
-        $fileNameCmps = explode(".", $fileName);
-        $fileExtension = strtolower(end($fileNameCmps));
-        
-        $allowedfileExtensions = array('jpg', 'gif', 'png', 'jpeg', 'webp');
-        if (in_array($fileExtension, $allowedfileExtensions)) {
-            $newFileName = md5(time() . $fileName) . '.' . $fileExtension;
-            $dest_path = $uploadDir . $newFileName;
+        foreach ($_FILES['images']['name'] as $key => $value) {
+            $errorCode = $_FILES['images']['error'][$key];
+            $logMsg = date('[Y-m-d H:i:s] ') . "File $key error code: $errorCode" . PHP_EOL;
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
             
-            if(move_uploaded_file($fileTmpPath, $dest_path)) {
-                $imagePath = 'uploads/' . $newFileName;
+            if ($errorCode === UPLOAD_ERR_OK) {
+                // ...
+                $filesToProcess[] = [
+                    'name' => $_FILES['images']['name'][$key],
+                    'tmp_name' => $_FILES['images']['tmp_name'][$key],
+                    'error' => $_FILES['images']['error'][$key]
+                ];
+            } else {
+                // Collect warnings
+                $fileName = $_FILES['images']['name'][$key];
+                if ($errorCode === UPLOAD_ERR_INI_SIZE || $errorCode === UPLOAD_ERR_FORM_SIZE) {
+                    $warnings[] = "Ảnh '$fileName' quá lớn (Vượt quá " . ini_get('upload_max_filesize') . ").";
+                } elseif ($errorCode === UPLOAD_ERR_PARTIAL) {
+                    $warnings[] = "Ảnh '$fileName' chỉ được tải lên một phần.";
+                } elseif ($errorCode !== UPLOAD_ERR_NO_FILE) {
+                     $warnings[] = "Ảnh '$fileName' gặp lỗi không xác định (Mã: $errorCode).";
+                }
             }
         }
     }
+    // Fallback: Check for single 'image'
+    if (empty($filesToProcess) && isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $filesToProcess[] = [
+            'name' => $_FILES['image']['name'],
+            'tmp_name' => $_FILES['image']['tmp_name'],
+            'error' => $_FILES['image']['error']
+        ];
+    }
 
-    if (!$content && !$imagePath && !$postId) {
-         // For new posts, must have content or image
+    foreach ($filesToProcess as $file) {
+        $fileName = $file['name'];
+        $fileTmpPath = $file['tmp_name'];
+        $fileNameCmps = explode(".", $fileName);
+        $fileExtension = strtolower(end($fileNameCmps));
+        $allowedfileExtensions = array('jpg', 'gif', 'png', 'jpeg', 'webp');
+        if (in_array($fileExtension, $allowedfileExtensions)) {
+             $newFileName = md5(time() . $fileName . uniqid()) . '.' . $fileExtension;
+             $dest_path = $uploadDir . $newFileName;
+             if(move_uploaded_file($fileTmpPath, $dest_path)) {
+                $uploadedImages[] = 'uploads/' . $newFileName;
+             }
+        }
+    }
+
+    // Main Validation
+    if (!$content && empty($uploadedImages) && !$postId) {
         echo json_encode(['error' => 'Empty']);
         exit;
     }
 
     try {
         if ($postId) {
-            // UPDATE
+            // UPDATE Logic (simplified: append new images, update text)
+            // Ideally we should allow deleting specific images. MVP: Just append.
+            
             // Verify ownership
-            $stmt = $pdo->prepare("SELECT user_id, image FROM posts WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT user_id FROM posts WHERE id = ?");
             $stmt->execute([$postId]);
             $post = $stmt->fetch();
 
@@ -105,36 +174,54 @@ if ($method === 'POST') {
                 exit;
             }
 
-            // Handle Image Logic for Update
-            $finalImagePath = $post['image']; // Default to keeping old image
-            
-            if ($imagePath) {
-                // New image uploaded -> replace
-                if ($post['image'] && file_exists(__DIR__ . '/../' . $post['image'])) {
-                    unlink(__DIR__ . '/../' . $post['image']);
-                }
-                $finalImagePath = $imagePath;
-            } elseif ($removeOldImage) {
-                // Explicitly asked to remove image
-                if ($post['image'] && file_exists(__DIR__ . '/../' . $post['image'])) {
-                    unlink(__DIR__ . '/../' . $post['image']);
-                }
-                $finalImagePath = null;
-            }
+            // Update content
+            $stmt = $pdo->prepare("UPDATE posts SET content = ? WHERE id = ?");
+            $stmt->execute([$content, $postId]);
 
-            $stmt = $pdo->prepare("UPDATE posts SET content = ?, image = ? WHERE id = ?");
-            $stmt->execute([$content, $finalImagePath, $postId]);
-            echo json_encode(['ok' => true, 'action' => 'updated']);
+            // Insert new images
+            if (!empty($uploadedImages)) {
+                $stmtImg = $pdo->prepare("INSERT INTO post_images (post_id, file_path) VALUES (?, ?)");
+                foreach ($uploadedImages as $imgPath) {
+                    $stmtImg->execute([$postId, $imgPath]);
+                }
+                
+                // Update main image if null (optional)
+                $stmtCheckMain = $pdo->prepare("SELECT image FROM posts WHERE id = ?");
+                $stmtCheckMain->execute([$postId]);
+                $curr = $stmtCheckMain->fetch();
+                if (empty($curr['image'])) {
+                    $stmtUpdMain = $pdo->prepare("UPDATE posts SET image = ? WHERE id = ?");
+                    $stmtUpdMain->execute([$uploadedImages[0], $postId]);
+                }
+            }
+            
+            echo json_encode([
+                'ok' => true, 
+                'action' => 'updated',
+                'warnings' => $warnings
+            ]);
 
         } else {
             // CREATE
-            if (!$content && !$imagePath) {
-                echo json_encode(['error' => 'Empty']);
-                exit;
-            }
+            $mainImage = !empty($uploadedImages) ? $uploadedImages[0] : null;
+            
             $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)");
-            $stmt->execute([$_SESSION['user_id'], $content, $imagePath]);
-            echo json_encode(['ok' => true, 'id' => $pdo->lastInsertId(), 'image' => $imagePath]);
+            $stmt->execute([$_SESSION['user_id'], $content, $mainImage]);
+            $newPostId = $pdo->lastInsertId();
+
+            if (!empty($uploadedImages)) {
+                $stmtImg = $pdo->prepare("INSERT INTO post_images (post_id, file_path) VALUES (?, ?)");
+                foreach ($uploadedImages as $imgPath) {
+                    $stmtImg->execute([$newPostId, $imgPath]);
+                }
+            }
+            
+            echo json_encode([
+                'ok' => true, 
+                'id' => $newPostId, 
+                'images' => $uploadedImages,
+                'warnings' => $warnings
+            ]);
         }
     } catch (Exception $e) {
         http_response_code(500);
@@ -145,12 +232,17 @@ if ($method === 'POST') {
 if ($method === 'GET') {
     try {
         $userId = $_SESSION['user_id'] ?? 0;
+        
+        // Increase concat limit
+        $pdo->exec("SET SESSION group_concat_max_len = 100000");
+
         $sql = "
             SELECT p.*, 
                    u.username, u.full_name, u.avatar,
                    (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
                    (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
-                   (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as is_liked
+                   (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as is_liked,
+                   (SELECT GROUP_CONCAT(file_path SEPARATOR ',') FROM post_images WHERE post_id = p.id) as all_images
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             ORDER BY p.created_at DESC 
