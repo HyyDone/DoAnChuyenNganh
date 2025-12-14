@@ -65,6 +65,7 @@ if ($method === 'GET') {
         $price = $_POST['price'] ?? 0;
         $address = $_POST['address'] ?? '';
         $city = $_POST['city'] ?? 'Ho Chi Minh';
+        $district = $_POST['district'] ?? '';
         $room_type = $_POST['room_type'] ?? 'private';
 
         // Basic validation
@@ -74,8 +75,8 @@ if ($method === 'GET') {
 
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO listings (owner_id, title, description, price, address, city, room_type) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$owner_id, $title, $description, $price, $address, $city, $room_type]);
+        $stmt = $pdo->prepare("INSERT INTO listings (owner_id, title, description, price, address, city, district, room_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$owner_id, $title, $description, $price, $address, $city, $district, $room_type]);
         $listing_id = $pdo->lastInsertId();
 
         // Handle Image Upload (Multiple)

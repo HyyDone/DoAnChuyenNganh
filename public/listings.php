@@ -213,16 +213,22 @@ include __DIR__ . '/includes/header.php';
                     <input type="number" name="price" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
                 </div>
                 <div style="margin-bottom: 10px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Địa chỉ</label>
-                    <input type="text" name="address" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                </div>
-                <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Thành phố</label>
-                    <select name="city" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    <select id="postCity" name="city" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" onchange="updateDistricts()">
                         <option value="Ho Chi Minh">Hồ Chí Minh</option>
                         <option value="Ha Noi">Hà Nội</option>
                         <option value="Da Nang">Đà Nẵng</option>
                     </select>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Quận/Huyện</label>
+                    <select id="postDistrict" name="district" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Địa chỉ cụ thể</label>
+                    <input type="text" name="address" required placeholder="Số nhà, tên đường..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Loại phòng</label>
@@ -317,7 +323,28 @@ include __DIR__ . '/includes/header.php';
 
 
 <script>
+const districtData = {
+    'Ho Chi Minh': ['Quận 1', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 7', 'Quận 10', 'Bình Thạnh', 'Phú Nhuận', 'Tân Bình', 'Thủ Đức', 'Gò Vấp'],
+    'Ha Noi': ['Hoàn Kiếm', 'Đống Đa', 'Ba Đình', 'Hai Bà Trưng', 'Hoàng Mai', 'Thanh Xuân', 'Long Biên', 'Nam Từ Liêm', 'Bắc Từ Liêm', 'Cầu Giấy', 'Hà Đông'],
+    'Da Nang': ['Hải Châu', 'Thanh Khê', 'Sơn Trà', 'Ngũ Hành Sơn', 'Liên Chiểu', 'Cẩm Lệ']
+};
+
+function updateDistricts() {
+    const city = document.getElementById('postCity').value;
+    const districtSelect = document.getElementById('postDistrict');
+    const districts = districtData[city] || [];
+    
+    districtSelect.innerHTML = '';
+    districts.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        districtSelect.appendChild(opt);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    updateDistricts(); // Initial load
     loadListings();
 
     // Image Preview for Listing Form

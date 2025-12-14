@@ -83,12 +83,15 @@ if (!function_exists('isActive')) {
                     <?= htmlspecialchars($displayName) ?>
                     <i class="fa-solid fa-caret-down" style="margin-left: 8px;"></i>
                 </div>
-                <div id="userDropdown" style="display:none; position:absolute; right:0; top:45px; background:white; color:black; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:200px; z-index:1000; overflow:hidden;">
+                <div id="userDropdown" style="display:none; position:absolute; right:0; top:45px; background:white; color:black; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:230px; z-index:1000; overflow:hidden;">
                     <a href="/profile.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
                         <i class="fa-solid fa-user" style="width:20px;"></i> Thông tin cá nhân
                     </a>
                     <a href="/manage_rentals.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
                         <i class="fa-solid fa-house-chimney" style="width:20px;"></i> Cho Thuê/Thuê Nhà
+                    </a>
+                    <a href="/my_appliances.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
+                        <i class="fa-solid fa-blender-phone" style="width:20px;"></i> Cho thuê đồ gia dụng
                     </a>
                     <a href="/favorites.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
                         <i class="fa-solid fa-heart" style="width:20px;"></i> Yêu thích
@@ -178,7 +181,16 @@ if (!function_exists('isActive')) {
                 link = '/manage_rentals.php?view=contracts'; // Tenant
             } else if (notif.type === 'contract_signed') {
                 link = '/manage_rentals.php?view=contracts'; // Owner
+            } else if (notif.type === 'appliance_request') {
+                link = '/my_appliances.php'; // Owner
+            } else if (notif.type === 'appliance_approved') {
+                 // For renter, maybe we don't have a specific page yet, or just main list? 
+                 // Or we could create a "My Rentals" section in my_appliances.php?
+                 link = '/appliances.php';
+            } else if (notif.type === 'appliance_rejected') {
+                 link = '/appliances.php';
             }
+
             
             const html = `
                 <div onclick="handleNotifClick(${notif.id}, '${link}')" style="padding:10px 15px; border-bottom:1px solid #eee; background:${bg}; cursor:pointer; display:flex; align-items:center; transition:background 0.2s;">
