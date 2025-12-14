@@ -569,17 +569,17 @@ if (isset($_SESSION['user_id'])) {
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
                 </div>
+                <!-- Updated Preview Box for Multiple Images -->
                 <div class="chat-image-preview-box" id="aiChatPreviewBox">
-                    <img src="" class="chat-preview-img" id="aiChatPreviewImg">
-                    <div class="chat-preview-remove" onclick="removeChatImage()">&times;</div>
+                    <div id="aiChatPreviewContainer" style="display:flex; flex-wrap:wrap;"></div>
                 </div>
                 <div class="chat-input-area">
                     <label for="aiChatFile" class="chat-upload-btn">
                         <i class="fa-solid fa-image"></i>
                     </label>
-                    <input type="file" id="aiChatFile" hidden accept="image/*" onchange="previewChatImage(this)">
+                    <input type="file" id="aiChatFile" hidden accept="image/*" multiple>
                     
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." onkeypress="handleChatKey(event)">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn...">
                     <button class="chat-send-btn" onclick="sendChatMessage()">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
@@ -587,6 +587,8 @@ if (isset($_SESSION['user_id'])) {
             </div>
         </div>
     </div>
+
+    <script src="/assets/js/ai_chat.js?v=<?= time() ?>"></script>
 
     <!-- Modal Đăng bài -->
     <div class="modal-overlay" id="postModal">
@@ -1487,114 +1489,7 @@ if (isset($_SESSION['user_id'])) {
         }
 
         // --- AI Chat Logic ---
-        const chatInput = document.getElementById('chatInput');
-        const chatMessages = document.getElementById('chatMessages');
-        const aiChatFile = document.getElementById('aiChatFile');
-        const aiChatPreviewBox = document.getElementById('aiChatPreviewBox');
-        const aiChatPreviewImg = document.getElementById('aiChatPreviewImg');
-        
-        // Client-side Context Memory (Reset on reload)
-        let chatContext = [];
-
-        function handleChatKey(e) {
-            if (e.key === 'Enter') {
-                sendChatMessage();
-            }
-        }
-        
-        function previewChatImage(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    aiChatPreviewImg.src = e.target.result;
-                    aiChatPreviewBox.classList.add('active');
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-        
-        function removeChatImage() {
-            aiChatFile.value = '';
-            aiChatPreviewImg.src = '';
-            aiChatPreviewBox.classList.remove('active');
-        }
-
-        async function sendChatMessage() {
-            const message = chatInput.value.trim();
-            const hasImage = aiChatFile.files.length > 0;
-            
-            if (!message && !hasImage) return;
-
-            // Add user message to UI
-            let userDisplay = message;
-            if (hasImage) {
-                userDisplay += '<br><small><i>[Đã gửi 1 ảnh]</i></small>';
-            }
-            addMessageToChat(userDisplay, 'user');
-
-            // Add to Context (Text only for now as pure text history)
-            chatContext.push({ sender: 'user', text: message + (hasImage ? " [User sent an image]" : "") });
-
-            // Clear input
-            chatInput.value = '';
-            
-            // Prepare FormData
-            const formData = new FormData();
-            formData.append('message', message);
-            if (hasImage) {
-                formData.append('image', aiChatFile.files[0]);
-            }
-            formData.append('history', JSON.stringify(chatContext));
-
-            // Clean up preview
-            removeChatImage();
-
-            // Show loading placeholder
-            const loadingId = addMessageToChat('<i class="fa-solid fa-ellipsis fa-fade"></i>', 'bot');
-
-            try {
-                const response = await fetch('/api/ai_chat.php', {
-                    method: 'POST',
-                    body: formData // Fetch automatically sets Content-Type to multipart/form-data
-                });
-                const result = await response.json();
-
-                // Remove loading
-                document.getElementById(loadingId).remove();
-
-                if (result.success) {
-                    addMessageToChat(result.response, 'bot');
-                    
-                    // Add AI response to context
-                    chatContext.push({ sender: 'bot', text: result.response });
-
-                    // Handle Actions
-                    if (result.action_performed === 'post_created') {
-                        console.log('Post created by AI, reloading feed...');
-                        loadPosts(); // Refresh feed
-                    }
-                } else {
-                    addMessageToChat("Lỗi: " + result.message, 'bot');
-                }
-            } catch (error) {
-                console.error('Chat error:', error);
-                document.getElementById(loadingId).remove();
-                addMessageToChat("Xin lỗi, tôi đang gặp sự cố kết nối.", 'bot');
-            }
-        }
-
-        function addMessageToChat(html, sender) {
-            const div = document.createElement('div');
-            div.className = `chat-message message-${sender}`;
-            div.id = 'msg-' + Date.now();
-            div.innerHTML = html;
-            chatMessages.appendChild(div);
-            // Auto scroll
-            requestAnimationFrame(() => {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            });
-            return div.id;
-        }        // ---------------------
+// Chat logic moved to /assets/js/ai_chat.js        // ---------------------
 
         // Utilities
         function escapeHtml(text) {

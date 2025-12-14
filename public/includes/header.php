@@ -17,7 +17,9 @@ if (!function_exists('isActive')) {
             <img src="/assets/thumbnailTro.jpg" alt="Thuê Trọ Online" style="height:40px;object-fit:contain;margin-right:10px;">
             <h1 style="margin:0;font-size:20px;">Thuê Trọ Online</h1>
         </a>
+        <a href="/news.php" style="<?= isActive('/news.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Tin Tức</a>
         <a href="/listings.php" style="<?= isActive('/listings.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Thuê Trọ</a>
+        <a href="/appliances.php" style="<?= isActive('/appliances.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Thuê đồ gia dụng</a>
     </div>
     <nav style="display:flex;align-items:center;height:100%;">
         <?php if (!empty($_SESSION['user_id'])): 
