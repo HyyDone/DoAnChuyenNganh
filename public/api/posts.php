@@ -11,9 +11,7 @@ if ($method === 'POST') {
         echo json_encode(['error' => 'Unauthorized']);
         exit;
     }
-//    $_SESSION['user_id'] = 1; // Hardcode for testing
 
-    // Check for DELETE action (simulated via POST) or actual DELETE method if configured
     $action = $_GET['action'] ?? '';
     
     if ($action === 'delete') {
@@ -26,7 +24,6 @@ if ($method === 'POST') {
         }
 
         try {
-            // Verify ownership
             $stmt = $pdo->prepare("SELECT user_id, image FROM posts WHERE id = ?");
             $stmt->execute([$postId]);
             $post = $stmt->fetch();
@@ -41,26 +38,22 @@ if ($method === 'POST') {
                 exit;
             }
 
-            // Get all images from post_images to delete files
             $stmtImgs = $pdo->prepare("SELECT file_path FROM post_images WHERE post_id = ?");
             $stmtImgs->execute([$postId]);
             $images = $stmtImgs->fetchAll(PDO::FETCH_COLUMN);
 
-            // Also check the old single image column
             if (!empty($post['image'])) {
                 $images[] = $post['image'];
             }
             
             $uniqueImages = array_unique($images);
 
-            // Delete files
             foreach ($uniqueImages as $imgInfo) {
                 if ($imgInfo && file_exists(__DIR__ . '/../' . $imgInfo)) {
                     unlink(__DIR__ . '/../' . $imgInfo);
                 }
             }
 
-            // Delete post (cascade will remove DB records)
             $stmt = $pdo->prepare("DELETE FROM posts WHERE id = ?");
             $stmt->execute([$postId]);
 
@@ -72,7 +65,6 @@ if ($method === 'POST') {
         exit;
     }
 
-    // Check for POST max size violation
     if (empty($_FILES) && empty($_POST) && isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
         $maxSize = ini_get('post_max_size');
         echo json_encode([
@@ -82,12 +74,9 @@ if ($method === 'POST') {
         exit;
     }
 
-    // Handle Create or Update
     $postId = $_POST['id'] ?? null;
     $content = trim($_POST['content'] ?? '');
-    // $removeOldImage = isset($_POST['remove_image']) && $_POST['remove_image'] === 'true'; // Deprecated for multi-image logic in this pass, or need better handling
     
-    // Handle Image Uploads
     $uploadedImages = [];
     $warnings = [];
     $uploadDir = __DIR__ . '/../uploads/';
@@ -95,10 +84,8 @@ if ($method === 'POST') {
         mkdir($uploadDir, 0777, true);
     }
 
-    // Adapt to accept multiple files 'images[]' OR single 'image' (legacy support)
     $filesToProcess = [];
     
-    // Check for 'images' array
     if (isset($_FILES['images'])) {
         $logFile = __DIR__ . '/../debug_log.txt';
         $logMsg = date('[Y-m-d H:i:s] ') . "Received images count: " . count($_FILES['images']['name']) . PHP_EOL;
@@ -110,14 +97,12 @@ if ($method === 'POST') {
             file_put_contents($logFile, $logMsg, FILE_APPEND);
             
             if ($errorCode === UPLOAD_ERR_OK) {
-                // ...
                 $filesToProcess[] = [
                     'name' => $_FILES['images']['name'][$key],
                     'tmp_name' => $_FILES['images']['tmp_name'][$key],
                     'error' => $_FILES['images']['error'][$key]
                 ];
             } else {
-                // Collect warnings
                 $fileName = $_FILES['images']['name'][$key];
                 if ($errorCode === UPLOAD_ERR_INI_SIZE || $errorCode === UPLOAD_ERR_FORM_SIZE) {
                     $warnings[] = "Ảnh '$fileName' quá lớn (Vượt quá " . ini_get('upload_max_filesize') . ").";
@@ -129,7 +114,6 @@ if ($method === 'POST') {
             }
         }
     }
-    // Fallback: Check for single 'image'
     if (empty($filesToProcess) && isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
         $filesToProcess[] = [
             'name' => $_FILES['image']['name'],
@@ -153,7 +137,6 @@ if ($method === 'POST') {
         }
     }
 
-    // Main Validation
     if (!$content && empty($uploadedImages) && !$postId) {
         echo json_encode(['error' => 'Empty']);
         exit;
@@ -161,10 +144,7 @@ if ($method === 'POST') {
 
     try {
         if ($postId) {
-            // UPDATE Logic (simplified: append new images, update text)
-            // Ideally we should allow deleting specific images. MVP: Just append.
             
-            // Verify ownership
             $stmt = $pdo->prepare("SELECT user_id FROM posts WHERE id = ?");
             $stmt->execute([$postId]);
             $post = $stmt->fetch();
@@ -174,18 +154,15 @@ if ($method === 'POST') {
                 exit;
             }
 
-            // Update content
             $stmt = $pdo->prepare("UPDATE posts SET content = ? WHERE id = ?");
             $stmt->execute([$content, $postId]);
 
-            // Insert new images
             if (!empty($uploadedImages)) {
                 $stmtImg = $pdo->prepare("INSERT INTO post_images (post_id, file_path) VALUES (?, ?)");
                 foreach ($uploadedImages as $imgPath) {
                     $stmtImg->execute([$postId, $imgPath]);
                 }
                 
-                // Update main image if null (optional)
                 $stmtCheckMain = $pdo->prepare("SELECT image FROM posts WHERE id = ?");
                 $stmtCheckMain->execute([$postId]);
                 $curr = $stmtCheckMain->fetch();
@@ -202,7 +179,6 @@ if ($method === 'POST') {
             ]);
 
         } else {
-            // CREATE
             $mainImage = !empty($uploadedImages) ? $uploadedImages[0] : null;
             
             $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)");
@@ -233,7 +209,6 @@ if ($method === 'GET') {
     try {
         $userId = $_SESSION['user_id'] ?? 0;
         
-        // Increase concat limit
         $pdo->exec("SET SESSION group_concat_max_len = 100000");
 
         $sql = "

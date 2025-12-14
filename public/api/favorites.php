@@ -16,7 +16,6 @@ if (!$userId) {
 }
 
 if ($method === 'POST') {
-    // Toggle favorite
     $data = json_decode(file_get_contents('php://input'), true);
     $listingId = $data['listing_id'] ?? 0;
 
@@ -26,19 +25,16 @@ if ($method === 'POST') {
     }
 
     try {
-        // Check if exists
         $stmt = $pdo->prepare("SELECT id FROM favorites WHERE user_id = ? AND listing_id = ?");
         $stmt->execute([$userId, $listingId]);
         $exists = $stmt->fetch();
 
         if ($exists) {
-            // Remove
             $delParams = [$userId, $listingId];
             $delStmt = $pdo->prepare("DELETE FROM favorites WHERE user_id = ? AND listing_id = ?");
             $delStmt->execute($delParams);
             echo json_encode(['success' => true, 'action' => 'removed']);
         } else {
-            // Add
             $addParams = [$userId, $listingId];
             $addStmt = $pdo->prepare("INSERT INTO favorites (user_id, listing_id) VALUES (?, ?)");
             $addStmt->execute($addParams);
@@ -49,18 +45,15 @@ if ($method === 'POST') {
         echo json_encode(['success' => false, 'message' => 'DB Error: ' . $e->getMessage()]);
     }
 } elseif ($method === 'GET') {
-    // Get favorites or check status
     $listingId = $_GET['listing_id'] ?? null;
 
     try {
         if ($listingId) {
-            // Check status for one listing
             $stmt = $pdo->prepare("SELECT id FROM favorites WHERE user_id = ? AND listing_id = ?");
             $stmt->execute([$userId, $listingId]);
             $isFavorite = $stmt->fetch() ? true : false;
             echo json_encode(['success' => true, 'is_favorite' => $isFavorite]);
         } else {
-            // Get all favorites
             $sql = "SELECT l.*, 
                            (SELECT file_path FROM listing_images WHERE listing_id = l.id AND is_cover = 1 LIMIT 1) as cover_image,
                            (SELECT file_path FROM listing_images WHERE listing_id = l.id LIMIT 1) as fallback_image
@@ -73,7 +66,6 @@ if ($method === 'POST') {
             $stmt->execute([$userId]);
             $favorites = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Process images
             foreach ($favorites as &$qt) {
                 $img = $qt['cover_image'] ?? $qt['fallback_image'] ?? 'assets/default-room.jpg';
                 if ($img && $img[0] !== '/' && strpos($img, 'assets/') !== 0 && strpos($img, 'http') !== 0) {
@@ -92,4 +84,3 @@ if ($method === 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
 }
-?>

@@ -3,12 +3,10 @@ ini_set("display_errors", 1);
 ini_set("display_startup_errors", 1);
 error_reporting(E_ALL);
 require_once __DIR__ . '/../config/db.php';
-// die('DEBUG: ALIVE - Listings page is executing PHP');
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Fetch user data if logged in (similar to index.php) to ensure session is valid
 $currentUser = null;
 if (isset($_SESSION['user_id'])) {
     try {
@@ -16,7 +14,6 @@ if (isset($_SESSION['user_id'])) {
         $stmt->execute([$_SESSION['user_id']]);
         $currentUser = $stmt->fetch();
     } catch (PDOException $e) {
-        // Silent fail or log
         error_log("DB Error in listings.php: " . $e->getMessage());
     }
 }
@@ -47,14 +44,13 @@ if (isset($_SESSION['user_id'])) {
             padding: 0;
         }
 
-        /* AI Chat Box (From Index) */
         .ai-chat-box {
             background: var(--card-bg);
             border-radius: 8px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             position: sticky;
             top: 20px;
-            height: 520px; /* Kept fixed height from listings page for consistency */
+            height: 520px;
             display: flex;
             flex-direction: column;
         }
@@ -133,7 +129,6 @@ if (isset($_SESSION['user_id'])) {
             opacity: 0.8;
         }
 
-        /* Chat Image Preview */
         .chat-image-preview-box {
             position: relative;
             padding: 8px 12px;
@@ -150,7 +145,7 @@ if (isset($_SESSION['user_id'])) {
         .chat-preview-remove {
             position: absolute;
             top: 4px;
-            left: 65px; /* Position next to image */
+            left: 65px;
             background: rgba(0,0,0,0.5);
             color: white;
             border-radius: 50%;
@@ -200,7 +195,6 @@ include __DIR__ . '/includes/header.php';
 <div style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
     <div style="display: grid; grid-template-columns: 300px 1fr 360px; gap: 24px;">
         
-        <!-- Left Column: Post Listing Form -->
         <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: fit-content;">
             <h3 style="margin-top: 0; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Đăng phòng</h3>
             <form id="postListingForm" enctype="multipart/form-data">
@@ -223,7 +217,6 @@ include __DIR__ . '/includes/header.php';
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Quận/Huyện</label>
                     <select id="postDistrict" name="district" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                        <!-- Populated by JS -->
                     </select>
                 </div>
                 <div style="margin-bottom: 10px;">
@@ -251,9 +244,7 @@ include __DIR__ . '/includes/header.php';
             </form>
         </div>
 
-        <!-- Center Column: Filters & Listings -->
         <div>
-            <!-- Filters -->
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
                 <div style="flex: 1;">
                     <input type="number" id="filterPriceMin" placeholder="Giá từ..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
@@ -282,15 +273,12 @@ include __DIR__ . '/includes/header.php';
 
             <h3 style="margin-bottom: 15px;">Danh sách phòng trọ</h3>
             
-            <!-- Listings Container -->
             <div id="listingsContainer">
-                <!-- Listings will be loaded here via JS -->
                 <p style="text-align:center; color: #666;">Đang tải dữ liệu...</p>
             </div>
         </div>
 
-        <!-- Right Column: AI Chat -->
-        <div style="height: fit-content;"> <!-- Wrapper to keep sticky behavior if needed -->
+        <div style="height: fit-content;">
             <div class="ai-chat-box">
                 <div class="ai-chat-header">
                     <i class="fa-solid fa-robot"></i>
@@ -344,10 +332,9 @@ function updateDistricts() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    updateDistricts(); // Initial load
+    updateDistricts();
     loadListings();
 
-    // Image Preview for Listing Form
     window.previewListingImages = function(input) {
         const container = document.getElementById('listingImagePreview');
         container.innerHTML = '';
@@ -368,7 +355,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('postListingForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
-        // Ensure files are appended (though standard FormData does this for input name="images[]")
         
         const submitBtn = this.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerText;
@@ -387,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 alert('Đăng tin thành công!');
                 this.reset();
-                document.getElementById('listingImagePreview').innerHTML = ''; // Clear preview
+                document.getElementById('listingImagePreview').innerHTML = '';
                 loadListings();
             } else {
                 if (data.message === 'Unauthorized') {
@@ -435,7 +421,7 @@ async function loadListings() {
         price_max: priceMax,
         city: city,
         room_type: roomType,
-        status: 'available' // Only show available listings
+        status: 'available'
     });
 
     fetch(`/api/listings.php?${params.toString()}`)
@@ -449,7 +435,7 @@ async function loadListings() {
                 const item = document.createElement('div');
                 item.style.cssText = 'background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; gap: 15px;';
                 
-                const imagePath = listing.image_path ? listing.image_path : 'https://placehold.co/400x300?text=Phong+Tro'; // Fallback image
+                const imagePath = listing.image_path ? listing.image_path : 'https://placehold.co/400x300?text=Phong+Tro';
                 
                 const isFav = userFavorites.has(listing.id);
                 const heartClass = isFav ? 'active' : '';
@@ -495,7 +481,6 @@ function toggleFavorite(listingId, btn) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // Toggle UI
             const icon = btn.querySelector('i');
             if (data.action === 'added') {
                 btn.classList.add('active');
@@ -521,7 +506,6 @@ function toggleFavorite(listingId, btn) {
 }
 
 const chatInput = document.getElementById('chatInput');
-// Chat logic moved to /assets/js/ai_chat.js
 </script>
 
 </body>

@@ -1,4 +1,3 @@
-/* Chat Widget CSS */
 .chat-widget-container {
     position: fixed;
     bottom: 0;
@@ -19,11 +18,9 @@
     flex-direction: column;
     overflow: hidden;
     margin-bottom: 0;
-    /* Attach to bottom */
     border: 1px solid #ddd;
     border-bottom: none;
     display: none;
-    /* Hidden by default */
 }
 
 .chat-popup.active {
@@ -128,7 +125,6 @@
     font-size: 1.2rem;
 }
 
-/* New Styles for Image Upload */
 .chat-upload-label {
     cursor: pointer;
     color: var(--primary-color);
@@ -151,13 +147,10 @@
     display: block;
 }
 
-/* Modal for Image Preview (Optional, or just open in new tab) */
 .image-preview-modal {
     display: none;
-    /* ... future enhancement ... */
 }
 
-/* Minimized State (Bubble) - Optional if we want bubbles like Messenger */
 .chat-bubble-minimized {
     width: 48px;
     height: 48px;
@@ -171,7 +164,6 @@
     margin-bottom: 10px;
 }
 
-/* Conversation List (for message dropdown) */
 .conversation-list {
     max-height: 400px;
     overflow-y: auto;

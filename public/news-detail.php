@@ -7,10 +7,8 @@ $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $newsItem = null;
 
 if ($id) {
-    // Update views
     $pdo->exec("UPDATE news SET views = views + 1 WHERE id = $id");
 
-    // Fetch news
     $stmt = $pdo->prepare("SELECT * FROM news WHERE id = ?");
     $stmt->execute([$id]);
     $newsItem = $stmt->fetch();
@@ -21,7 +19,6 @@ if (!$newsItem) {
     exit;
 }
 
-// Fetch Top 5 for Sidebar
 try {
     $stmtTop = $pdo->query("SELECT * FROM news ORDER BY views DESC LIMIT 5");
     $topNews = $stmtTop->fetchAll();
@@ -62,11 +59,10 @@ try {
         }
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
-            .sidebar { order: 2; position: static; } /* Reset sticky on mobile */
+            .sidebar { order: 2; position: static; }
             .main-content { order: 1; }
         }
 
-        /* Sidebar Reused */
         .sidebar {
             position: sticky;
             top: 20px;
@@ -104,7 +100,6 @@ try {
         }
         .top-news-views { font-size: 12px; color: var(--secondary-text); }
 
-        /* Detail Content */
         .detail-card {
             background: white;
             padding: 30px;

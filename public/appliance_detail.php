@@ -6,7 +6,6 @@ session_start();
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $appliance = null;
 
-// Fetch Appliance Detail
 try {
     $stmt = $pdo->prepare("SELECT appliances.*, users.username, users.avatar, users.email, users.phone 
                            FROM appliances 
@@ -15,7 +14,6 @@ try {
     $stmt->execute([$id]);
     $appliance = $stmt->fetch();
 } catch (PDOException $e) {
-    // Error
 }
 
 if (!$appliance) {
@@ -23,7 +21,6 @@ if (!$appliance) {
     exit;
 }
 
-// Fetch Suggestions (Same Type or City, Different ID)
 $suggestions = [];
 try {
     $stmtSug = $pdo->prepare("SELECT * FROM appliances WHERE type = ? AND id != ? LIMIT 5");
@@ -31,7 +28,6 @@ try {
     $suggestions = $stmtSug->fetchAll();
 } catch (Exception $e) {}
 
-// Handle Booking Logic
 $bookingSuccess = '';
 $bookingError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'book_appliance') {
@@ -45,19 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $bookingError = 'Vui lòng nhập địa chỉ nhận hàng.';
         } else {
             try {
-                // Insert Notification
                 $pdo->beginTransaction();
                 
-                // Create Booking
                 $stmtBook = $pdo->prepare("INSERT INTO appliance_bookings (appliance_id, renter_id, address, status) VALUES (?, ?, ?, 'pending')");
                 $stmtBook->execute([$id, $renterId, $address]);
                 
-                // Create Notification for Owner
-                // Check if renting own item
                 if ($appliance['user_id'] != $renterId) {
                     $msg = "Có người muốn thuê " . $appliance['name'];
                     $stmtNotif = $pdo->prepare("INSERT INTO notifications (user_id, message, type, reference_id) VALUES (?, ?, 'appliance_request', ?)");
-                    $stmtNotif->execute([$appliance['user_id'], $msg, $id]); // reference_id can be appliance id, or booking id. Let's use appliance id for filtering later or we can add booking id content
+                    $stmtNotif->execute([$appliance['user_id'], $msg, $id]);
                 }
 
                 $pdo->commit();
@@ -94,7 +86,7 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
             margin: 20px auto;
             padding: 0 15px;
             display: grid;
-            grid-template-columns: 250px 1fr 300px; /* 3 Columns: Left, Center, Right */
+            grid-template-columns: 250px 1fr 300px;
             gap: 24px;
         }
 
@@ -110,7 +102,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
             margin-bottom: 20px;
         }
 
-        /* Left: Suggestions */
         .sugg-item {
             display: flex;
             gap: 10px;
@@ -128,7 +119,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
         .sugg-info h4 { margin: 0 0 5px 0; font-size: 14px; }
         .sugg-price { font-size: 13px; color: #e91e63; font-weight: bold; }
 
-        /* Center: Detail */
         .detail-img {
             width: 100%;
             height: 400px;
@@ -151,7 +141,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
         .prop-item label { display: block; font-size: 13px; color: #666; }
         .prop-item span { font-weight: 500; font-size: 15px; }
 
-        /* Right: Booking & Owner */
         .owner-box {
             display: flex;
             align-items: center;
@@ -190,7 +179,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <div class="container">
-    <!-- Left Column: Suggestions -->
     <aside>
         <div class="card">
             <h3 style="font-size: 16px; margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Gợi ý tương tự</h3>
@@ -208,7 +196,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
         </div>
     </aside>
 
-    <!-- Center Column: Detail -->
     <main>
         <div class="card">
             <?php 
@@ -245,7 +232,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
         </div>
     </main>
 
-    <!-- Right Column: Booking & Owner -->
     <aside>
         <div class="card">
             <div class="owner-box">
@@ -274,7 +260,6 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
                         <label>Thông tin người thuê</label>
                         <div style="background: #f0f2f5; padding: 10px; border-radius: 6px; font-size: 14px;">
                             <?php 
-                                // Fetch current user info for display
                                 $renter = $pdo->prepare("SELECT full_name, phone FROM users WHERE id = ?");
                                 $renter->execute([$_SESSION['user_id']]);
                                 $rInfo = $renter->fetch();

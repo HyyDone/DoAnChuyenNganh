@@ -20,18 +20,15 @@ if ($method === 'POST') {
     if ($action === 'like') {
         $postId = $input['post_id'] ?? 0;
         
-        // Check if already liked
         $stmt = $pdo->prepare("SELECT id FROM likes WHERE user_id = ? AND post_id = ?");
         $stmt->execute([$userId, $postId]);
         $existing = $stmt->fetch();
 
         if ($existing) {
-            // Unlike
             $stmt = $pdo->prepare("DELETE FROM likes WHERE id = ?");
             $stmt->execute([$existing['id']]);
             echo json_encode(['status' => 'unliked']);
         } else {
-            // Like
             $stmt = $pdo->prepare("INSERT INTO likes (user_id, post_id) VALUES (?, ?)");
             $stmt->execute([$userId, $postId]);
             echo json_encode(['status' => 'liked']);
@@ -51,7 +48,6 @@ if ($method === 'POST') {
         
         $commentId = $pdo->lastInsertId();
         
-        // Fetch the new comment with user info
         $stmt = $pdo->prepare("
             SELECT c.*, u.username, u.full_name, u.avatar 
             FROM comments c 
@@ -77,7 +73,6 @@ if ($method === 'POST') {
         $stmt->execute([$postId]);
         $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Organize into tree structure
         $commentTree = [];
         $commentsById = [];
         

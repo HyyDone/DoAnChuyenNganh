@@ -40,18 +40,15 @@ if (!function_exists('isActive')) {
             $avatar = !empty($headerUser['avatar']) ? $headerUser['avatar'] : 'assets/default-avatar.png';
         ?>
             <div style="display:flex; align-items:center; margin-right: 15px;">
-                <!-- Message Icon -->
                 <div style="position:relative; margin-right:15px; cursor:pointer;" onclick="toggleMessageDropdown()">
                      <div style="width:40px; height:40px; background:rgba(255,255,255,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">
                         <i class="fa-brands fa-facebook-messenger" style="font-size:20px;"></i>
                      </div>
                      <div id="messageBadge" class="unread-dot-indicator" style="display:none; width:20px; height:20px; background:red; border-radius:50%; position:absolute; top:-5px; right:-5px; font-size:12px; display:flex; align-items:center; justify-content:center; border:2px solid #1877f2;"></div>
                      
-                     <!-- Dropdown for Messages -->
                      <div id="messageDropdown" class="dropdown-content" style="display:none; position:absolute; right:0; top:50px; background:white; width:360px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1001; cursor:default;">
                         <div style="padding:16px; font-weight:bold; font-size:24px; color:black;">Chat</div>
                         <div class="conversation-list" style="max-height:400px; overflow-y:auto;">
-                            <!-- Populated by JS -->
                         </div>
                         <div style="padding:10px; text-align:center; border-top:1px solid #ddd;">
                             <a href="#" style="text-decoration:none; color:var(--primary-color); font-weight:600;">Xem tất cả trong Messenger</a>
@@ -59,18 +56,15 @@ if (!function_exists('isActive')) {
                      </div>
                 </div>
 
-                <!-- Notification Icon -->
                 <div style="position:relative; cursor:pointer;" onclick="toggleNotifDropdown()">
                      <div style="width:40px; height:40px; background:rgba(255,255,255,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">
                         <i class="fa-solid fa-bell" style="font-size:20px;"></i>
                      </div>
                      <div id="notifBadge" class="unread-dot-indicator" style="display:none; width:20px; height:20px; background:red; border-radius:50%; position:absolute; top:-5px; right:-5px; font-size:12px; display:flex; align-items:center; justify-content:center; border:2px solid #1877f2;"></div>
 
-                     <!-- Notification Dropdown -->
                      <div id="notifDropdown" class="dropdown-content" style="display:none; position:absolute; right:0; top:50px; background:white; width:360px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1001; cursor:default; max-height: 400px; overflow-y: auto;">
                         <div style="padding:16px; font-weight:bold; font-size:20px; color:black; border-bottom:1px solid #eee;">Thông báo</div>
                         <div id="notifList">
-                            <!-- Populated by JS -->
                             <div style="padding:15px; text-align:center; color:#666;">Không có thông báo mới</div>
                         </div>
                      </div>
@@ -104,7 +98,6 @@ if (!function_exists('isActive')) {
             </div>
 
     <script>
-    // User Dropdown Logic
     function toggleUserDropdown() {
         const dd = document.getElementById('userDropdown');
         const notifDD = document.getElementById('notifDropdown');
@@ -119,7 +112,6 @@ if (!function_exists('isActive')) {
         }
     }
 
-    // Notification Logic
     function toggleNotifDropdown() {
         const dd = document.getElementById('notifDropdown');
         const userDD = document.getElementById('userDropdown');
@@ -167,25 +159,22 @@ if (!function_exists('isActive')) {
             const isUnread = notif.is_read == 0;
             const bg = isUnread ? '#e7f3ff' : 'white';
             
-            // Determine link based on type
             let link = '#';
             if (notif.type === 'request_booking') {
-                link = '/manage_rentals.php'; // Owner
+                link = '/manage_rentals.php';
             } else if (notif.type === 'booking_confirmed') {
-                link = '/manage_rentals.php?view=my_rentals'; // Tenant
+                link = '/manage_rentals.php?view=my_rentals';
             } else if (notif.type === 'damage_report') {
-                link = '/manage_rentals.php?view=my_listings&view_report=' + notif.reference_id; // Owner
+                link = '/manage_rentals.php?view=my_listings&view_report=' + notif.reference_id;
             } else if (notif.type === 'damage_confirmed') {
-                link = '/manage_rentals.php?view=my_rentals&view_report=' + notif.reference_id; // Tenant
+                link = '/manage_rentals.php?view=my_rentals&view_report=' + notif.reference_id;
             } else if (notif.type === 'contract_created') {
-                link = '/manage_rentals.php?view=contracts'; // Tenant
+                link = '/manage_rentals.php?view=contracts';
             } else if (notif.type === 'contract_signed') {
-                link = '/manage_rentals.php?view=contracts'; // Owner
+                link = '/manage_rentals.php?view=contracts';
             } else if (notif.type === 'appliance_request') {
-                link = '/my_appliances.php'; // Owner
+                link = '/my_appliances.php';
             } else if (notif.type === 'appliance_approved') {
-                 // For renter, maybe we don't have a specific page yet, or just main list? 
-                 // Or we could create a "My Rentals" section in my_appliances.php?
                  link = '/appliances.php';
             } else if (notif.type === 'appliance_rejected') {
                  link = '/appliances.php';
@@ -209,7 +198,6 @@ if (!function_exists('isActive')) {
     }
     
     async function handleNotifClick(id, link) {
-        // Mark read
         try {
             await fetch('/api/notifications.php?action=mark_read', {
                 method: 'POST',
@@ -218,11 +206,9 @@ if (!function_exists('isActive')) {
             });
         } catch(e) { console.error(e); }
         
-        // Redirect
         if (link && link !== '#') {
             window.location.href = link;
         } else {
-            // Just refresh list if no link
              loadNotifications();
         }
     }
@@ -232,12 +218,9 @@ if (!function_exists('isActive')) {
         return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }
 
-    // Poll every 10 seconds
     setInterval(loadNotifications, 10000);
-    // Initial load
     document.addEventListener('DOMContentLoaded', loadNotifications);
     
-    // Close dropdowns on outside click
     window.addEventListener('click', function(e) {
         const userContainer = document.querySelector('.user-dropdown-container');
         const notifContainer = document.querySelector('.fa-bell').closest('div[onclick]');
@@ -245,14 +228,12 @@ if (!function_exists('isActive')) {
         
         if (!e.target.closest('.user-dropdown-container') && 
             !e.target.closest('#notifDropdown') && 
-            !e.target.closest('.fa-bell') && // Click on bell icon itself
-             // Hacky check if click was on the parent div of bell
+            !e.target.closest('.fa-bell') && 
             (!notifContainer || !notifContainer.contains(e.target))) {
              
              const dd = document.getElementById('notifDropdown');
              if (dd && dd.style.display === 'block') dd.style.display = 'none';
         }
-        
     });
     </script>
         <?php else: ?>

@@ -14,13 +14,11 @@ $action = $_GET['action'] ?? 'get';
 
 try {
     if ($action === 'get') {
-        // Get unread or recent 10 notifications
         $sql = "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$userId]);
         $notifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Count unread
         $countSql = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
         $countStmt = $pdo->prepare($countSql);
         $countStmt->execute([$userId]);

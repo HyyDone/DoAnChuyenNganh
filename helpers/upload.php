@@ -10,7 +10,6 @@ function upload_avatar($file, $destDir = __DIR__ . '/../public/uploads/avatars/'
     if (!is_dir($destDir)) mkdir($destDir, 0755, true);
     if (!is_dir($destDir)) mkdir($destDir, 0755, true);
     
-    // Check MIME type using getimagesize (fallback for finfo)
     $imageInfo = @getimagesize($file['tmp_name']);
     if ($imageInfo === false) {
         return ['error' => 'Invalid image file'];

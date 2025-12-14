@@ -1,13 +1,10 @@
-/* Chat Widget JS */
-
 let currentChatUserId = null;
 let chatPollingInterval = null;
-const NOTIFICATION_POLL_INTERVAL = 10000; // 10 seconds
-const CHAT_POLL_INTERVAL = 3000; // 3 seconds
+const NOTIFICATION_POLL_INTERVAL = 10000;
+const CHAT_POLL_INTERVAL = 3000;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Start polling for notifications/unread messages globally
-    if (window.isUserLoggedIn) { // Define this in footer or header
+    if (window.isUserLoggedIn) {
         pollUnreadMessages();
         setInterval(pollUnreadMessages, NOTIFICATION_POLL_INTERVAL);
     }
@@ -16,32 +13,25 @@ document.addEventListener('DOMContentLoaded', () => {
 function openChat(userId, userFullname = '', userAvatar = '') {
     const chatPopup = document.getElementById('chatPopup');
 
-    // If opening same chat, do nothing or maximize
     if (chatPopup.classList.contains('active') && currentChatUserId === userId) {
-        // Focus input
         document.getElementById('chatInput').focus();
         return;
     }
 
     currentChatUserId = userId;
 
-    // Set Header Info
     const displayName = userFullname || 'User';
     document.getElementById('chatUserName').innerText = displayName;
     document.getElementById('chatUserAvatar').src = userAvatar ? '/' + userAvatar : '/assets/default-avatar.png';
 
-    // Show Popup
     chatPopup.style.display = 'flex';
     setTimeout(() => chatPopup.classList.add('active'), 10);
 
-    // Load History
     loadChatHistory(userId);
 
-    // Start Polling
     if (chatPollingInterval) clearInterval(chatPollingInterval);
     chatPollingInterval = setInterval(() => loadChatHistory(userId, true), CHAT_POLL_INTERVAL);
 
-    // Focus Input
     document.getElementById('chatInput').focus();
 }
 
@@ -61,13 +51,7 @@ async function loadChatHistory(userId, appendOnly = false) {
 
         const chatBody = document.getElementById('chatBody');
 
-        // Simple render logic: re-render all for now (optimization: only append new)
-        // For smoother UX in polling, we might want to check difference, but simpler for MVP.
         if (appendOnly) {
-            // Basic check: if count differs, reload. 
-            // Ideally we should track last message ID.
-            // For now, let's just re-render to ensure consistency as it's fast enough for small text.
-            // To prevent scrolling jump, only scroll if at bottom.
         }
 
         renderMessages(messages);
@@ -76,7 +60,6 @@ async function loadChatHistory(userId, appendOnly = false) {
             scrollToBottom();
         }
 
-        // Update red dot (mark as read happened in API)
         pollUnreadMessages();
 
     } catch (error) {
@@ -86,7 +69,6 @@ async function loadChatHistory(userId, appendOnly = false) {
 
 function renderMessages(messages) {
     const chatBody = document.getElementById('chatBody');
-    // Store scroll position
     const scrollTop = chatBody.scrollTop;
     const scrollHeight = chatBody.scrollHeight;
     const isAtBottom = scrollTop + chatBody.clientHeight >= scrollHeight - 20;
@@ -98,7 +80,7 @@ function renderMessages(messages) {
         return;
     }
 
-    const myId = window.currentUserId; // Define in footer/header
+    const myId = window.currentUserId;
 
     messages.forEach(msg => {
         const div = document.createElement('div');
@@ -118,7 +100,6 @@ function renderMessages(messages) {
         chatBody.appendChild(div);
     });
 
-    // Restore scroll or scroll to bottom if was at bottom
     if (isAtBottom) {
         scrollToBottom();
     }
@@ -137,8 +118,8 @@ async function sendMessage() {
 
     if ((!content && !file) || !currentChatUserId) return;
 
-    input.value = ''; // Clear early for UX
-    if (fileInput) fileInput.value = ''; // Clear file selection
+    input.value = '';
+    if (fileInput) fileInput.value = '';
 
     try {
         const formData = new FormData();
@@ -151,18 +132,16 @@ async function sendMessage() {
         const response = await fetch('/api/messages.php?action=send', {
             method: 'POST',
             body: formData
-            // Do NOT set Content-Type header when sending FormData, fetch sets it automatically with boundary
         });
 
         const result = await response.json();
         if (result.id) {
-            // Reload to show new message clearly
             loadChatHistory(currentChatUserId, true);
             scrollToBottom();
         }
     } catch (error) {
         console.error('Error sending message:', error);
-        input.value = content; // Restore on error
+        input.value = content;
     }
 }
 
@@ -182,13 +161,11 @@ async function pollUnreadMessages() {
         if (badge) {
             if (count > 0) {
                 badge.style.display = 'block';
-                // badge.innerText = count; // Optional: show count
             } else {
                 badge.style.display = 'none';
             }
         }
     } catch (error) {
-        // console.error('Error polling:', error);
     }
 }
 
@@ -196,7 +173,6 @@ async function toggleMessageDropdown() {
     const dd = document.getElementById('messageDropdown');
     const list = dd.querySelector('.conversation-list');
 
-    // Close other dropdowns
     document.querySelectorAll('.dropdown-content').forEach(el => {
         if (el !== dd) el.style.display = 'none';
     });
@@ -205,7 +181,6 @@ async function toggleMessageDropdown() {
         dd.style.display = 'none';
     } else {
         dd.style.display = 'block';
-        // Load conversations
         list.innerHTML = '<div style="padding:10px;text-align:center;">Đang tải...</div>';
         try {
             const response = await fetch('/api/messages.php?action=conversations');

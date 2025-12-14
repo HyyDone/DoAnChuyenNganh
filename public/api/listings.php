@@ -27,10 +27,6 @@ if ($method === 'GET') {
             $sql .= " AND l.city LIKE ?";
             $params[] = '%' . $_GET['city'] . '%';
         }
-        // Note: 'capacity' is not in the schema provided earlier, assuming 'room_type' or description for now. 
-        // If user meant specific capacity column, we might need to add it. 
-        // For now, let's filter by room_type if provided, or just ignore capacity if not in schema.
-        // Looking at schema: room_type ENUM('studio','share','private')
         if (!empty($_GET['room_type'])) {
              $sql .= " AND l.room_type = ?";
              $params[] = $_GET['room_type'];
@@ -60,7 +56,7 @@ if ($method === 'GET') {
 
     try {
         $owner_id = $_SESSION['user_id'];
-        $title = $_POST['title'] ?? 'Phòng trọ mới'; // Default title if not provided
+        $title = $_POST['title'] ?? 'Phòng trọ mới';
         $description = $_POST['description'] ?? '';
         $price = $_POST['price'] ?? 0;
         $address = $_POST['address'] ?? '';
@@ -68,7 +64,6 @@ if ($method === 'GET') {
         $district = $_POST['district'] ?? '';
         $room_type = $_POST['room_type'] ?? 'private';
 
-        // Basic validation
         if (empty($price) || empty($address)) {
             throw new Exception("Giá và địa chỉ là bắt buộc.");
         }
@@ -79,7 +74,6 @@ if ($method === 'GET') {
         $stmt->execute([$owner_id, $title, $description, $price, $address, $city, $district, $room_type]);
         $listing_id = $pdo->lastInsertId();
 
-        // Handle Image Upload (Multiple)
         if (!empty($_FILES['images']['name'][0])) {
             $target_dir = __DIR__ . "/../../public/uploads/listings/";
             if (!file_exists($target_dir)) {
@@ -94,16 +88,15 @@ if ($method === 'GET') {
                     $file_extension = pathinfo($_FILES['images']['name'][$i], PATHINFO_EXTENSION);
                     $new_filename = uniqid() . '_' . $i . '.' . $file_extension;
                     $target_file = $target_dir . $new_filename;
-                    $db_path = "uploads/listings/" . $new_filename; // relative path for DB
+                    $db_path = "uploads/listings/" . $new_filename;
 
                     if (move_uploaded_file($_FILES['images']['tmp_name'][$i], $target_file)) {
-                        $is_cover = ($i === 0) ? 1 : 0; // First image is cover
+                        $is_cover = ($i === 0) ? 1 : 0;
                         $stmt_img->execute([$listing_id, $db_path, $is_cover]);
                     }
                 }
             }
         }
-        // Fallback for single 'image' (legacy)
         elseif (!empty($_FILES['image']['name'])) {
             $target_dir = __DIR__ . "/../../public/uploads/listings/";
             if (!file_exists($target_dir)) {

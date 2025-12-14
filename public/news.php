@@ -3,7 +3,6 @@ ini_set("display_errors", 1);
 require_once __DIR__ . '/../config/db.php';
 session_start();
 
-// 1. Fetch Top 5 Most Viewed
 try {
     $stmtTop = $pdo->query("SELECT * FROM news ORDER BY views DESC LIMIT 5");
     $topNews = $stmtTop->fetchAll();
@@ -11,7 +10,6 @@ try {
     $topNews = [];
 }
 
-// 2. Fetch News List (Filtered by Category if present)
 $category = isset($_GET['category']) ? $_GET['category'] : null;
 $newsList = [];
 
@@ -34,7 +32,6 @@ $categories = [
     'Cảnh báo lừa đảo',
     'Tin thị trường'
 ];
-
 ?>
 <!doctype html>
 <html lang="vi">
@@ -77,7 +74,6 @@ $categories = [
             }
         }
 
-        /* Sidebar Styles */
         aside {
             position: sticky;
             top: 20px;
@@ -101,7 +97,6 @@ $categories = [
             display: inline-block;
         }
 
-        /* Top 5 List */
         .top-news-item {
             display: block;
             margin-bottom: 15px;
@@ -128,7 +123,6 @@ $categories = [
             color: var(--secondary-text);
         }
 
-        /* Category Dropdown/Menu */
         .category-list {
             list-style: none;
             padding: 0;
@@ -158,7 +152,6 @@ $categories = [
             font-size: 12px;
         }
 
-        /* Main Feed */
         .news-header {
             background: white;
             padding: 15px 20px;
@@ -223,10 +216,6 @@ $categories = [
             line-height: 1.5;
             margin-bottom: 10px;
         }
-
-        @media (max-width: 600px) {
-            
-        }
     </style>
 </head>
 <body>
@@ -234,9 +223,7 @@ $categories = [
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <div class="container">
-    <!-- Left Column (Sidebar) -->
     <aside>
-        <!-- Top 5 Views -->
         <div class="sidebar-card">
             <div class="sidebar-title">Top 5 Xem Nhiều</div>
             <div class="top-news-list">
@@ -255,10 +242,8 @@ $categories = [
             </div>
         </div>
 
-        <!-- Categories -->
         <div class="sidebar-card">
             <div class="sidebar-title">Chuyên Mục</div>
-            <!-- Custom Dropdown implementation as requested -->
             <select onchange="if(this.value) window.location.href=this.value" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; margin-bottom: 15px; display: none;">
                 <option value="/news.php">Tất cả chuyên mục</option>
                 <?php foreach ($categories as $cat): ?>
@@ -268,7 +253,6 @@ $categories = [
                 <?php endforeach; ?>
             </select>
             
-            <!-- List View (Better UI, keep as default) -->
             <ul class="category-list">
                 <li class="category-item">
                     <a href="/news.php" class="category-link <?= !$category ? 'active' : '' ?>">
@@ -286,7 +270,6 @@ $categories = [
         </div>
     </aside>
 
-    <!-- Right Column (Main Content) -->
     <main>
         <div class="news-header">
             <?php if ($category): ?>
@@ -326,7 +309,6 @@ $categories = [
     </main>
 </div>
 
-<!-- Included Footer -->
 <?php if (file_exists(__DIR__ . '/includes/footer.php')) include __DIR__ . '/includes/footer.php'; ?>
 
 </body>

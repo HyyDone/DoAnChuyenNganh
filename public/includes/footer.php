@@ -16,7 +16,6 @@
 </footer>
 <?php endif; ?>
 
-<!-- Chat Widget Global Include -->
 <link rel="stylesheet" href="/assets/css/chat.css">
 <script>
     window.currentUserId = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
@@ -35,7 +34,6 @@
             </div>
         </div>
         <div class="chat-body" id="chatBody">
-            <!-- Messages go here -->
         </div>
         <div class="chat-footer">
             <label for="chatImageInput" class="chat-upload-label" title="Gửi ảnh">

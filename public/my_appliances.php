@@ -13,7 +13,6 @@ $successMsg = '';
 $errorMsg = '';
 $selectedId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// Handle Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
@@ -26,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $city = $_POST['city'];
         $type = $_POST['type'];
         
-        // Image Upload (Simplified update)
         $imagePath = $_POST['current_image'] ?? null;
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
              $uploadDir = __DIR__ . '/uploads/appliances/';
@@ -42,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE appliances SET name=?, price=?, quantity=?, description=?, city=?, type=?, image_path=? WHERE id=? AND user_id=?");
             $stmt->execute([$name, $price, $quantity, $desc, $city, $type, $imagePath, $id, $userId]);
             $successMsg = 'Cập nhật thành công!';
-            $selectedId = $id; // Keep selected
+            $selectedId = $id;
         } catch (Exception $e) { $errorMsg = 'Lỗi cập nhật: ' . $e->getMessage(); }
         
     } elseif ($action === 'delete_appliance') {
@@ -51,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("DELETE FROM appliances WHERE id=? AND user_id=?");
             $stmt->execute([$id, $userId]);
             $successMsg = 'Đã xóa vật dụng.';
-            $selectedId = 0; // Reset selection
+            $selectedId = 0;
         } catch (Exception $e) { $errorMsg = 'Lỗi xóa: ' . $e->getMessage(); }
         
     } elseif ($action === 'approve_booking' || $action === 'reject_booking') {
@@ -59,7 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newStatus = ($action === 'approve_booking') ? 'approved' : 'rejected';
         
         try {
-            // Verify ownership via booking -> appliance -> user
             $stmtCheck = $pdo->prepare("SELECT b.id, b.renter_id, b.appliance_id, a.name 
                                         FROM appliance_bookings b 
                                         JOIN appliances a ON b.appliance_id = a.id 
@@ -68,16 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $booking = $stmtCheck->fetch();
             
             if ($booking) {
-                // Update Status
                 $stmtUpd = $pdo->prepare("UPDATE appliance_bookings SET status = ? WHERE id = ?");
                 $stmtUpd->execute([$newStatus, $bookingId]);
                 
-                // If Approved, decrease quantity? (Optional logic, let's keep simple for now or decrement)
                 if ($newStatus === 'approved') {
                     $pdo->prepare("UPDATE appliances SET quantity = quantity - 1 WHERE id = ?")->execute([$booking['appliance_id']]);
                 }
 
-                // Send Notification to Renter
                 $notifType = ($newStatus === 'approved') ? 'appliance_approved' : 'appliance_rejected';
                 $msg = "Yêu cầu thuê '" . $booking['name'] . "' của bạn đã bị " . ($newStatus == 'approved' ? 'chấp nhận' : 'từ chối');
                 
@@ -85,23 +79,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtNotif->execute([$booking['renter_id'], $msg, $notifType, $booking['appliance_id']]);
                 
                 $successMsg = 'Đã xử lý yêu cầu.';
-                 $selectedId = $booking['appliance_id']; // Keep context
+                 $selectedId = $booking['appliance_id'];
             }
         } catch (Exception $e) { $errorMsg = 'Lỗi xử lý: ' . $e->getMessage(); }
     }
 }
 
-// Fetch User's Appliances
 $stmtList = $pdo->prepare("SELECT * FROM appliances WHERE user_id = ? ORDER BY created_at DESC");
 $stmtList->execute([$userId]);
 $myAppliances = $stmtList->fetchAll();
 
-// If no ID selected but items exist, select first
 if ($selectedId == 0 && count($myAppliances) > 0) {
     $selectedId = $myAppliances[0]['id'];
 }
 
-// Get Selected Item Details
 $selectedItem = null;
 $bookings = [];
 if ($selectedId > 0) {
@@ -112,7 +103,6 @@ if ($selectedId > 0) {
         }
     }
     
-    // Get Bookings for this item
     if ($selectedItem) {
         $stmtBook = $pdo->prepare("SELECT b.*, u.full_name, u.phone, u.avatar 
                                    FROM appliance_bookings b 
@@ -155,7 +145,7 @@ if ($selectedId > 0) {
             margin: 20px auto;
             padding: 0 15px;
             display: grid;
-            grid-template-columns: 350px 1fr 350px; /* Left (Edit), Center (List), Right (Requests) */
+            grid-template-columns: 350px 1fr 350px;
             gap: 20px;
             align-items: start;
         }
@@ -175,7 +165,6 @@ if ($selectedId > 0) {
             margin-bottom: 20px;
         }
         
-        /* Center List */
         .list-item {
             display: flex;
             gap: 15px;
@@ -188,7 +177,6 @@ if ($selectedId > 0) {
         .list-item.active { background: #e7f3ff; border-left: 4px solid var(--primary-color); }
         .list-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; background: #eee; }
         
-        /* Forms */
         .form-group { margin-bottom: 12px; }
         .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
         .form-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing:border-box; }
@@ -196,7 +184,6 @@ if ($selectedId > 0) {
         .btn-primary { background: var(--primary-color); color: white; width: 100%; }
         .btn-danger { background: #dc3545; color: white; width: 100%; margin-top: 10px; }
         
-        /* Requests */
         .req-item {
             background: #f9f9f9;
             padding: 10px;
@@ -225,7 +212,6 @@ if ($selectedId > 0) {
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <div class="container">
-    <!-- Left Column: Edit Info -->
     <div class="col-left">
         <div class="card">
             <?php if ($selectedItem): ?>
@@ -301,7 +287,6 @@ if ($selectedId > 0) {
         </div>
     </div>
 
-    <!-- Center Column: My List -->
     <div class="col-center">
         <div class="card">
             <h2 style="margin-top:0; font-size:20px;">Danh sách của tôi</h2>
@@ -323,7 +308,6 @@ if ($selectedId > 0) {
         </div>
     </div>
 
-    <!-- Right Column: Requests -->
     <div class="col-right">
         <div class="card">
             <h3 style="margin-top:0;">Yêu cầu thuê</h3>

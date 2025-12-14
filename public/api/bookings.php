@@ -28,7 +28,6 @@ if (!$listingId) {
 }
 
 try {
-    // Check if listing exists and get owner info for email
     $stmt = $pdo->prepare("
         SELECT l.id, l.title, u.email as owner_email, u.full_name as owner_name 
         FROM listings l 
@@ -42,10 +41,6 @@ try {
         throw new Exception('Listing not found');
     }
 
-    // Check availability (simple check: is it already booked in that range? or just is status available?)
-    // For now user requested a simple flow: "khi ấn thuê trọ sẽ gửi thư".
-    // We will insert 'pending' booking.
-
     $insert = $pdo->prepare("
         INSERT INTO bookings (listing_id, tenant_id, start_date, end_date, status) 
         VALUES (?, ?, ?, ?, 'pending')
@@ -53,18 +48,15 @@ try {
     $insert->execute([$listingId, $tenantId, $startDate, $endDate]);
     $bookingId = $pdo->lastInsertId();
 
-    // Create Notification for Owner
     $notifMsg = "Bạn có yêu cầu thuê mới cho: " . $listing['title'];
     $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'request_booking', ?, ?)");
-    // Need owner_id. Join above selects owner_email/name but we need ID.
-    // Let's refetch query above or just add owner_id to select
+    
     $stmtOwner = $pdo->prepare("SELECT owner_id FROM listings WHERE id = ?");
     $stmtOwner->execute([$listingId]);
     $ownerId = $stmtOwner->fetchColumn();
     
     $notifStmt->execute([$ownerId, $bookingId, $notifMsg]);
 
-    // Send Email
     require_once __DIR__ . '/../../helpers/mail.php';
 
     $currentUserStmt = $pdo->prepare("SELECT full_name, phone, email FROM users WHERE id = ?");
@@ -74,7 +66,6 @@ try {
     $to = $listing['owner_email'];
     $subject = "Yêu cầu thuê phòng mới: " . $listing['title'];
     
-    // Tạo nội dung HTML
     $body = "
     <h3>Xin chào {$listing['owner_name']},</h3>
     <p>Bạn vừa nhận được một yêu cầu thuê phòng mới cho bài đăng: <strong>{$listing['title']}</strong></p>
@@ -91,13 +82,11 @@ try {
     <p>Trân trọng,<br>Đội ngũ Thuê Trọ</p>
     ";
 
-    // Gửi mail
     $mailSent = sendMail($to, $subject, $body);
 
     if ($mailSent) {
         echo json_encode(['success' => true, 'message' => 'Yêu cầu thuê đã được gửi! Chủ nhà sẽ nhận được email thông báo.']);
     } else {
-        // Vẫn báo thành công cho user nhưng log lỗi (hoặc báo warning) - Ở đây ta chỉ báo thành công việc đặt booking
         echo json_encode(['success' => true, 'message' => 'Đã gửi yêu cầu đặt phòng (Lỗi gửi email thông báo).']);
     }
 

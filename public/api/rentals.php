@@ -3,10 +3,10 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/mail.php';
 session_start();
 
-ob_start(); // Buffer output to prevent stray HTML/Whitespace
+ob_start();
 header('Content-Type: application/json');
-ini_set('display_errors', 0); // Hide errors from output
-error_reporting(E_ALL); // Still log them
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
 if (!isset($_SESSION['user_id'])) {
     ob_end_clean();
@@ -21,9 +21,6 @@ $action = $_GET['action'] ?? '';
 try {
     switch ($action) {
         case 'get_my_listings':
-            // Fetch listings owned by user
-            // We need to fetch PENDING requests specifically to show them distinctively
-            // And CONFIRMED bookings to show tenant info
             $stmt = $pdo->prepare("
                 SELECT l.*, 
                        (SELECT file_path FROM listing_images WHERE listing_id = l.id AND is_cover = 1 LIMIT 1) as cover_image,
@@ -41,7 +38,6 @@ try {
             break;
 
         case 'get_my_rentals':
-            // Fetch listings where user is the tenant
             $stmt = $pdo->prepare("
                 SELECT l.*, b.id as booking_id,
                        (SELECT file_path FROM listing_images WHERE listing_id = l.id AND is_cover = 1 LIMIT 1) as cover_image,
@@ -65,8 +61,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $bookingId = $data['booking_id'] ?? 0;
             
-            // Verify ownership of the listing associated with this booking
-            // Verify ownership and status
             $check = $pdo->prepare("
                 SELECT b.id, b.listing_id, b.status, l.owner_id
                 FROM bookings b 
@@ -86,29 +80,16 @@ try {
                 throw new Exception('Request has already been processed (Current status: ' . $booking['status'] . ')');
             }
             
-            // Transaction
             $pdo->beginTransaction();
             
-            // Update Booking Status
             $updB = $pdo->prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ?");
             $updB->execute([$bookingId]);
             
-            // Update Listing Status to 'booked' (hides it from public)
             $updL = $pdo->prepare("UPDATE listings SET status = 'booked' WHERE id = ?");
             $updL->execute([$booking['listing_id']]);
             
-            // Reject other pending bookings for same listing? Optional but good practice.
-            // For now let's keep it simple.
-            
             $pdo->commit();
 
-            // Notify Tenant
-            $notifMsg = "Yêu cầu thuê phòng '" . $booking['title'] . "' của bạn đã được CHẤP NHẬN!";
-            // Need tenant_id and title. Join already has title. fetch adds it.
-            // Check select: SELECT b.id, b.listing_id ... (missing title, tenant_id)
-            // Let's refetch with more info inside the case or modify the check query.
-            // Modifying check query above is risky if we don't change fetch.
-            // Safer to just query here.
             $infoStmt = $pdo->prepare("SELECT b.tenant_id, l.title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = ?");
             $infoStmt->execute([$bookingId]);
             $info = $infoStmt->fetch();
@@ -128,7 +109,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $bookingId = $data['booking_id'] ?? 0;
 
-            // Verify ownership
             $check = $pdo->prepare("
                 SELECT b.id, b.listing_id 
                 FROM bookings b 
@@ -143,15 +123,12 @@ try {
 
             $bookingListingId = $checkStmt['listing_id'];
 
-            // Update booking status to cancelled
             $upd = $pdo->prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?");
             $upd->execute([$bookingId]);
             
-            // Restore listing status to available (un-hide it)
             $updL = $pdo->prepare("UPDATE listings SET status = 'available' WHERE id = ?");
             $updL->execute([$bookingListingId]);
             
-            // Notify Tenant
             $infoStmt = $pdo->prepare("SELECT b.tenant_id, l.title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = ?");
             $infoStmt->execute([$bookingId]);
             $info = $infoStmt->fetch();
@@ -171,23 +148,19 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $listingId = $data['id'] ?? 0;
 
-            // Verify ownership
             $check = $pdo->prepare("SELECT id FROM listings WHERE id = ? AND owner_id = ?");
             $check->execute([$listingId, $userId]);
             if (!$check->fetch()) {
                 throw new Exception('Permission denied');
             }
 
-            // Get images to delete files
             $imgStmt = $pdo->prepare("SELECT file_path FROM listing_images WHERE listing_id = ?");
             $imgStmt->execute([$listingId]);
             $images = $imgStmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // Delete from DB (Cascade should handle related tables, but files need manual deletion)
             $del = $pdo->prepare("DELETE FROM listings WHERE id = ?");
             $del->execute([$listingId]);
 
-            // Delete files
             foreach ($images as $path) {
                 $fullPath = __DIR__ . '/../../public/' . $path;
                 if (file_exists($fullPath)) {
@@ -205,7 +178,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $listingId = $data['id'] ?? 0;
             
-             // Verify ownership
             $check = $pdo->prepare("SELECT id FROM listings WHERE id = ? AND owner_id = ?");
             $check->execute([$listingId, $userId]);
             if (!$check->fetch()) {
@@ -236,7 +208,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $listingId = $data['id'] ?? 0;
 
-            // Verify ownership
             $check = $pdo->prepare("SELECT id, title FROM listings WHERE id = ? AND owner_id = ?");
             $check->execute([$listingId, $userId]);
             $listing = $check->fetch();
@@ -247,7 +218,6 @@ try {
 
             $pdo->beginTransaction();
 
-            // 1. Fetch tenant info for notification (before deletion)
             $tenantStmt = $pdo->prepare("
                 SELECT b.tenant_id
                 FROM bookings b 
@@ -256,11 +226,9 @@ try {
             $tenantStmt->execute([$listingId]);
             $tenant = $tenantStmt->fetch();
 
-            // 1. Delete active bookings (confirmed or pending)
             $delB = $pdo->prepare("DELETE FROM bookings WHERE listing_id = ? AND status IN ('confirmed', 'pending')");
             $delB->execute([$listingId]);
 
-            // Send system notification if tenant existed (No Email)
             if ($tenant) {
                 $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'rental_stopped', ?, ?)");
                 $nStmt->execute([
@@ -270,9 +238,6 @@ try {
                 ]);
             }
 
-            // 2. Set listing status to inactive (Stop Renting)
-            // Or 'available' if just eviction? User said "nút dừng cho thuê", "không cho thuê nữa".
-            // Suggests 'inactive'.
             $updL = $pdo->prepare("UPDATE listings SET status = 'inactive' WHERE id = ?");
             $updL->execute([$listingId]);
             
@@ -291,7 +256,6 @@ try {
             
             if (!$listingId) throw new Exception('Missing ID');
 
-            // Get Owner Email & Info
             $stmt = $pdo->prepare("
                 SELECT l.title, u.email as owner_email, u.full_name as owner_name 
                 FROM listings l 
@@ -303,7 +267,6 @@ try {
             
             if (!$info) throw new Exception('Listing not found');
 
-            // Handle Image Upload
             $imagePath = '';
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
                 $uploadDir = __DIR__ . '/../../public/uploads/payments/';
@@ -318,12 +281,10 @@ try {
                 }
             }
 
-            // Get Tenant Info
             $uStmt = $pdo->prepare("SELECT full_name, phone FROM users WHERE id = ?");
             $uStmt->execute([$userId]);
             $tenant = $uStmt->fetch();
 
-            // Send Email
             $subject = "[Thuê Trọ] Thông báo đóng tiền trọ - " . $info['title'];
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
             $host = $_SERVER['HTTP_HOST'];
@@ -367,7 +328,6 @@ try {
                 throw new Exception('Missing required fields');
             }
 
-            // Verify tenant ownership
             $stmt = $pdo->prepare("
                 SELECT b.id, b.listing_id, l.owner_id, l.title as listing_title, u.full_name as tenant_name 
                 FROM bookings b
@@ -382,12 +342,10 @@ try {
                 throw new Exception('Booking not found or permission denied');
             }
 
-            // Insert Report
             $ins = $pdo->prepare("INSERT INTO damage_reports (booking_id, reporter_id, title, description, cost, status) VALUES (?, ?, ?, ?, ?, 'pending')");
             $ins->execute([$bookingId, $userId, $title, $desc, $cost]);
             $reportId = $pdo->lastInsertId();
 
-            // Notify Owner
             $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'damage_report', ?, ?)");
             $msg = "Người thuê {$info['tenant_name']} báo cáo hư hại tại '{$info['listing_title']}': $title. Phí dự kiến: " . number_format($cost) . "đ";
             $nStmt->execute([$info['owner_id'], $reportId, $msg]);
@@ -398,8 +356,6 @@ try {
         case 'get_damage_report':
             $reportId = $_GET['id'] ?? 0;
             
-            // Verify access (Reporter OR Owner)
-            // Join through bookings -> listings to get owner_id
             $stmt = $pdo->prepare("
                 SELECT dr.*, b.tenant_id, l.owner_id
                 FROM damage_reports dr
@@ -414,7 +370,6 @@ try {
                 throw new Exception('Report not found');
             }
 
-            // Check permission
             if ($report['tenant_id'] != $userId && $report['owner_id'] != $userId) {
                 throw new Exception('Permission denied');
             }
@@ -429,8 +384,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $reportId = $data['report_id'] ?? 0;
 
-            // Get Report & Verify Owner
-            // Report -> Booking -> Listing -> Owner
             $stmt = $pdo->prepare("
                 SELECT dr.*, b.tenant_id, l.owner_id, l.title as listing_title
                 FROM damage_reports dr
@@ -453,11 +406,9 @@ try {
                 throw new Exception('Report already processed');
             }
 
-            // Update Status
             $upd = $pdo->prepare("UPDATE damage_reports SET status = 'confirmed' WHERE id = ?");
             $upd->execute([$reportId]);
 
-            // Notify Tenant
             $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'damage_confirmed', ?, ?)");
             $msg = "Chủ nhà đã XÁC NHẬN báo cáo hư hại '{$report['title']}' tại '{$report['listing_title']}'.";
             $nStmt->execute([$report['tenant_id'], $reportId, $msg]);
@@ -468,13 +419,7 @@ try {
             echo json_encode(['success' => true]);
             break;
 
-        // --- CONTRACT ACTIONS ---
-
         case 'get_contracts':
-            // Fetch contracts/bookings for owner or tenant
-            // For owner: Get all confirmed bookings for their listings
-            // For tenant: Get all confirmed bookings where they are tenant
-            
             $sql = "
                 SELECT b.id as booking_id, b.start_date, b.end_date,
                        l.title, l.price, l.address, l.district, l.city,
@@ -504,7 +449,6 @@ try {
 
             if (!$bookingId || !$content) throw new Exception('Missing data');
 
-            // Verify Owner
             $check = $pdo->prepare("
                 SELECT l.owner_id, u.id as tenant_id, l.title
                 FROM bookings b
@@ -519,12 +463,10 @@ try {
                 throw new Exception('Permission denied');
             }
 
-            // Insert
             $ins = $pdo->prepare("INSERT INTO contracts (booking_id, content, status) VALUES (?, ?, 'pending')");
             $ins->execute([$bookingId, $content]);
             $contractId = $pdo->lastInsertId();
 
-            // Notify Tenant
             $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'contract_created', ?, ?)");
             $msg = "Chủ nhà đã tạo hợp đồng thuê cho phòng '{$info['title']}'. Vui lòng xem và xác nhận.";
             $nStmt->execute([$info['tenant_id'], $contractId, $msg]);
@@ -559,7 +501,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['id'] ?? 0;
 
-            // Verify Tenant
             $stmt = $pdo->prepare("
                 SELECT c.*, l.owner_id, b.tenant_id, l.title
                 FROM contracts c
@@ -574,11 +515,9 @@ try {
             if ($contract['tenant_id'] != $userId) throw new Exception('Permission denied');
             if ($contract['status'] == 'signed') throw new Exception('Already signed');
 
-            // Update
             $upd = $pdo->prepare("UPDATE contracts SET status = 'signed', signed_at = NOW() WHERE id = ?");
             $upd->execute([$id]);
 
-            // Notify Owner
             $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'contract_signed', ?, ?)");
             $msg = "Người thuê đã XÁC NHẬN hợp đồng thuê phòng '{$contract['title']}'.";
             $nStmt->execute([$contract['owner_id'], $id, $msg]);
@@ -593,7 +532,6 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['id'] ?? 0;
             
-            // Verify Owner
              $stmt = $pdo->prepare("
                 SELECT c.*, l.owner_id
                 FROM contracts c
@@ -619,7 +557,7 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    ob_end_clean(); // Clean any previous output (warnings/etc)
-    http_response_code(500); // Internal Server Error
+    ob_end_clean();
+    http_response_code(500); 
     echo json_encode(['error' => $e->getMessage()]);
 }

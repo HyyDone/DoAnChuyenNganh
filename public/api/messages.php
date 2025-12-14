@@ -4,14 +4,12 @@ require_once __DIR__ . '/../../helpers/auth.php';
 
 header('Content-Type: application/json');
 
-// Helper to send JSON response
 function jsonResponse($data, $status = 200) {
     http_response_code($status);
     echo json_encode($data);
     exit;
 }
 
-// Check authentication
 $currentUserId = current_user_id();
 if (!$currentUserId) {
     jsonResponse(['error' => 'Unauthorized'], 401);
@@ -22,8 +20,6 @@ $action = $_GET['action'] ?? '';
 try {
     switch ($action) {
         case 'conversations':
-            // Get list of users the current user has chatted with
-            // We want the latest message for each conversation to sort by time
             $sql = "
                 SELECT 
                     u.id, u.username, u.full_name, u.avatar,
@@ -57,11 +53,9 @@ try {
                 jsonResponse(['error' => 'Missing user_id'], 400);
             }
             
-            // Mark messages from this user as read
             $updateStmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
             $updateStmt->execute([$otherUserId, $currentUserId]);
 
-            // Fetch chat history
             $stmt = $pdo->prepare("
                 SELECT * FROM messages 
                 WHERE (sender_id = ? AND receiver_id = ?) 
@@ -88,7 +82,6 @@ try {
             $receiverId = $_POST['receiver_id'] ?? 0;
             $content = trim($_POST['content'] ?? '');
             
-            // Handle Image Upload
             $imagePath = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
                 $uploadDir = __DIR__ . '/../uploads/chat/';
@@ -118,7 +111,6 @@ try {
             $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, content, image, created_at) VALUES (?, ?, ?, ?, NOW())");
             $stmt->execute([$currentUserId, $receiverId, $content, $imagePath]);
             
-            // Return the new message
             $messageId = $pdo->lastInsertId();
             $stmt = $pdo->prepare("SELECT * FROM messages WHERE id = ?");
             $stmt->execute([$messageId]);

@@ -3,7 +3,6 @@ ini_set("display_errors", 1);
 require_once __DIR__ . '/../config/db.php';
 session_start();
 
-// Handle POST request to add appliance
 $successMsg = '';
 $errorMsg = '';
 
@@ -18,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $description = $_POST['description'] ?? '';
         $city = $_POST['city'] ?? 'Ho Chi Minh';
 
-        // Image Upload
         $imagePath = null;
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
             $uploadDir = __DIR__ . '/uploads/appliances/';
@@ -47,7 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Filter and Fetch Appliances
 $filterCity = $_GET['city'] ?? 'all';
 $sql = "SELECT appliances.*, users.username, users.avatar FROM appliances JOIN users ON appliances.user_id = users.id";
 $params = [];
@@ -111,7 +108,6 @@ try {
             .main-content { order: 2; }
         }
 
-        /* Sidebar Form */
         aside {
             position: sticky;
             top: 20px;
@@ -157,7 +153,6 @@ try {
         .alert-success { background: #d4edda; color: #155724; }
         .alert-error { background: #f8d7da; color: #721c24; }
 
-        /* Filter */
         .filter-bar {
             background: white;
             padding: 15px;
@@ -169,7 +164,6 @@ try {
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
-        /* List Styling */
         .appliance-item {
             background: var(--card-bg);
             border-radius: 8px;

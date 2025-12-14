@@ -14,8 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO listings (owner_id,title,description,price,district) VALUES (?,?,?,?,?)");
         $stmt->execute([$uid, $title, $desc, $price, $district]);
         $lid = $pdo->lastInsertId();
-        // handle images
-        if (!empty($_FILES['images']['tmp_name'][0])) { // sửa ở đây
+        if (!empty($_FILES['images']['tmp_name'][0])) {
             $dest = __DIR__ . '/../public/uploads/rooms/';
             if (!is_dir($dest)) mkdir($dest, 0755, true);
             foreach ($_FILES['images']['tmp_name'] as $i => $tmp) {
@@ -44,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <h2>Add Room</h2>
     <?php
-    // sửa cú pháp hiển thị lỗi
     if (!empty($errors)) {
         foreach ($errors as $e) {
             echo "<div style='color:red'>" . htmlspecialchars($e) . "</div>";

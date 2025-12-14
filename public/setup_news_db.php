@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../config/db.php';
 
 try {
-    // Create news table
     $sql = "CREATE TABLE IF NOT EXISTS news (
         id INT AUTO_INCREMENT PRIMARY KEY,
         title VARCHAR(255) NOT NULL COMMENT 'Tiêu đề tin',
@@ -20,11 +19,9 @@ try {
     $pdo->exec($sql);
     echo "Created/Verified news table.<br>";
 
-    // Clear existing data to avoid duplicates during testing
     $pdo->exec("TRUNCATE TABLE news");
     echo "Cleared existing news data.<br>";
 
-    // Seed data
     $categories = [
         'Tin thuê trọ',
         'Kinh nghiệm thuê nhà',
@@ -37,8 +34,6 @@ try {
     
     $stmt = $pdo->prepare("INSERT INTO news (title, slug, category, summary, content, views, created_at, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
-    // Sample data generation
-    // Category 1: Tin thuê trọ
     $stmt->execute([
         'Phòng trọ giá rẻ quận Cầu Giấy chỉ 3 triệu',
         'phong-tro-gia-re-cau-giay',
@@ -61,7 +56,6 @@ try {
         'https://placeholder.co/600x400?text=Can+Ho'
     ]);
 
-    // Category 2: Kinh nghiệm thuê nhà
     $stmt->execute([
         '5 lưu ý quan trọng khi đi thuê phòng trọ sinh viên',
         '5-luu-y-thue-phong-tro',
@@ -84,7 +78,6 @@ try {
         'https://placeholder.co/600x400?text=Deal+Gia'
     ]);
 
-    // Category 3: Pháp lý nhà trọ
     $stmt->execute([
         'Quy định mới về đăng ký tạm trú 2024',
         'quy-dinh-tam-tru-2024',
@@ -96,19 +89,17 @@ try {
         'https://placeholder.co/600x400?text=Phap+Ly'
     ]);
 
-    // Category 4: Cảnh báo lừa đảo
     $stmt->execute([
         'Cảnh báo chiêu trò lừa cọc giữ phòng',
         'canh-bao-lua-coc',
         'Cảnh báo lừa đảo',
         'Nhiều sinh viên bị lừa mất tiền cọc vì tin lời môi giới ảo.',
         'Các đối tượng thường đăng ảnh phòng đẹp giá rẻ bất ngờ...',
-        2500, // High views for Top 5
+        2500,
         $start_date->modify('-3 days')->format('Y-m-d H:i:s'),
         'https://placeholder.co/600x400?text=Lua+Dao'
     ]);
 
-    // Category 5: Tin thị trường
     $stmt->execute([
         'Giá thuê nhà Hà Nội tăng mạnh dịp cuối năm',
         'gia-thue-nha-tang-manh',
@@ -131,10 +122,8 @@ try {
         'https://placeholder.co/600x400?text=O+Ghep'
     ]);
 
-
     echo "Seeded News Data successfully.";
 
 } catch (PDOException $e) {
     echo "Error: " . $e->getMessage();
 }
-?>

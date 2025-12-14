@@ -4,19 +4,15 @@ require_once __DIR__ . '/../../helpers/upload.php';
 require_once __DIR__ . '/../../helpers/CityNormalizer.php';
 
 session_start();
-// Suppress deprecation warnings for PHP 8.5+ regarding http_response_header
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
-ob_start(); // Buffer output to catch any spurious warnings
+ob_start();
 
 header('Content-Type: application/json');
 
 $userId = $_SESSION['user_id'] ?? null;
 
-// 1. Handle File Uploads (if any)
-// 1. Handle File Uploads (Multiple)
 $uploadedImagePaths = [];
 
-// Handle single 'image' (legacy support)
 if (!empty($_FILES['image']) && !empty($_FILES['image']['name'])) {
     $targetDir = __DIR__ . '/../../public/uploads/ai_generated/';
     if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
@@ -26,7 +22,6 @@ if (!empty($_FILES['image']) && !empty($_FILES['image']['name'])) {
     }
 }
 
-// Handle multiple 'images[]'
 if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
     $targetDir = __DIR__ . '/../../public/uploads/ai_generated/';
     if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
@@ -49,9 +44,7 @@ if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
     }
 }
 
-// 2. Parsed Input
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle both JSON (standard chat) and FormData (file upload + text)
     $input = [];
     $message = '';
     $history = [];
@@ -73,10 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // 3. RAG: Fetch Listings Context
     $listingsContext = getListingsContext($pdo);
 
-    // [OPTIMIZATION] Pre-check for standard Greeting
     $lowerMsg = strtolower($message);
     if (in_array($lowerMsg, ['xin chào', 'hi', 'hello', 'chào', 'chao'])) {
         ob_clean();
@@ -88,29 +79,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // 4. Construct System Prompt
     $systemPrompt = constructSystemPrompt($listingsContext, $uploadedImagePaths);
 
-    // 5. Call Ollama
     $aiResponse = callOllama($message, $history, $systemPrompt);
 
-    // 6. Intent Parsing & Execution
     $actionResult = handleAiActions($pdo, $userId, $aiResponse, $uploadedImagePaths, $message);
     
-    // If AI performed an action (like posting), it returns a specific message.
-    // We append that to the final response.
-    
-    // Clean buffer before outputting JSON to ensure no warnings/text are prepended
     ob_clean();
     echo json_encode([
         'success' => true,
         'response' => $actionResult['response'],
-        'action_performed' => $actionResult['type'] ?? null // e.g., 'post_created', 'listing_created'
+        'action_performed' => $actionResult['type'] ?? null
     ]);
     exit;
 }
-
-// --- Helper Functions ---
 
 function getListingsContext($pdo) {
     try {
@@ -200,7 +182,6 @@ function callOllama($message, $history, $systemPrompt) {
     $messages = [];
     $messages[] = ['role' => 'system', 'content' => $systemPrompt];
     
-    // Add recent history
     $history = array_slice($history, -4);
     foreach ($history as $msg) {
         $role = $msg['sender'] === 'user' ? 'user' : 'assistant';
@@ -232,7 +213,6 @@ function sendHttpRequest($url, $method, $data = []) {
     $jsonPayload = json_encode($data);
     $contentLength = strlen($jsonPayload);
     
-    // Create params for file_get_contents (universal fallback, NO CURL needed)
     $opts = [
         'http' => [
             'method'  => $method,
@@ -240,8 +220,8 @@ function sendHttpRequest($url, $method, $data = []) {
                          "Accept: application/json\r\n" .
                          "Content-Length: $contentLength\r\n",
             'content' => $jsonPayload,
-            'timeout' => 60, // Increased timeout for AI generation
-            'ignore_errors' => true // Capture error response body
+            'timeout' => 60,
+            'ignore_errors' => true
         ]
     ];
     
@@ -253,15 +233,16 @@ function sendHttpRequest($url, $method, $data = []) {
         return ['success' => false, 'error' => $error['message'] ?? 'Connection faied'];
     }
     
-    // Check headers for status code - PHP 8.5+ compatible
     $statusLine = '';
     if (function_exists('http_get_last_response_headers')) {
         $headers = http_get_last_response_headers();
         if ($headers && isset($headers[0])) {
             $statusLine = $headers[0];
         }
-    } elseif (isset($http_response_header)) {
-        $statusLine = $http_response_header[0];
+    } else {
+        if (isset($http_response_header)) {
+            $statusLine = $http_response_header[0];
+        }
     }
 
     if ($statusLine) {
@@ -277,7 +258,6 @@ function sendHttpRequest($url, $method, $data = []) {
 }
 
 function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessage) {
-    // Try to parse JSON from response
     $jsonStart = strpos($aiResponseText, '{');
     $jsonEnd = strrpos($aiResponseText, '}');
     
@@ -286,7 +266,6 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
         $actionData = json_decode($jsonStr, true);
 
         if ($actionData && isset($actionData['action'])) {
-            // --- SAFETY GUARDRAILS ---
             $msgLower = strtolower($userMessage);
             $isSearchIntent = (
                 strpos($msgLower, 'tìm') !== false ||
@@ -301,15 +280,12 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                 strpos($msgLower, 'post') !== false
             );
 
-            // If it looks like a search but AI wants to create listing -> BLOCK IT
             if ($actionData['action'] === 'create_listing' && $isSearchIntent && !$isPostIntent) {
-                // Check if the AI just fabricated generic info to fill the form
                 $title = $actionData['title'] ?? 'Phòng trọ';
                 $price = $actionData['price'] ?? 0;
                 $addr = $actionData['address'] ?? '';
                 $desc = $actionData['description'] ?? '';
 
-                // If mostly empty/default data, assume it didn't find anything real
                 if (
                     (empty($addr) || $addr === 'Chưa cập nhật') && 
                     (stripos($title, 'Phòng trọ') !== false || empty($title)) &&
@@ -320,7 +296,6 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                     ];
                 }
 
-                // If it seems to have valid info, show it
                 $priceStr = is_numeric($price) ? number_format($price) . ' VND' : $price;
                 
                 $responseMsg = "Tôi tìm thấy thông tin phù hợp với yêu cầu của bạn:\n";
@@ -332,13 +307,11 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                 return ['response' => $responseMsg];
             }
             
-            // NEW: If it looks like a search but AI wants to create SOCIAL POST -> BLOCK IT
             if ($actionData['action'] === 'create_post' && $isSearchIntent && !$isPostIntent) {
                  return [
                     'response' => "Hiện tôi chưa tìm thấy thông tin phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
                 ];
             }
-            // -------------------------
 
             if ($actionData['action'] === 'create_post') {
                 return executeCreatePost($pdo, $userId, $actionData, $imagePaths);
@@ -358,12 +331,10 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                 if ($isSearch) {
                     $city = null;
 
-                    // 1️⃣ ưu tiên city AI
                     if (!empty($actionData['city'])) {
                         $city = CityNormalizer::normalize($actionData['city']);
                     }
 
-                    // 2️⃣ fallback: parse từ user message
                     if (!$city) {
                         if (preg_match('/h(à|a)\s*n(ộ|o)i/', $msg)) {
                             $city = 'Ha Noi';
@@ -410,7 +381,6 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                     ];
                 }
 
-                // ---- NOT SEARCH → SAFE AI TEXT ONLY ----
                 $text = $actionData['description'] ?? $actionData['message'] ?? null;
 
                 if ($text && trim($text) !== '') {
@@ -424,8 +394,6 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
         }
     }
 
-    
-    // Default: Chat response (clean up any JSON artifacts if mixed)
     $cleanResponse = trim($aiResponseText);
     if ($cleanResponse === '{}' || $cleanResponse === '[]') {
          return ['response' => 'Hiện tôi chưa tìm thấy thông tin phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?'];
@@ -437,17 +405,15 @@ function executeCreatePost($pdo, $userId, $data, $imagePaths) {
     if (!$userId) return ['response' => 'Vui lòng đăng nhập để đăng bài.'];
     
     $caption = $data['caption'] ?? 'Bài viết mới';
-    // Remove [Hình ảnh X] or [Image X] patterns
     $caption = preg_replace('/\[(Hình ảnh|Image)\s*\d+\]/ui', '', $caption);
     $caption = trim($caption);
 
-    $primaryImage = $imagePaths[0] ?? null; // Posts table currently optimized for 1 image, or we need to update logic.
-    // Ideally we should check if posts table supports multiple images via a related table, but for now stick to 1.
+    $primaryImage = $imagePaths[0] ?? null; 
     
     try {
         $pdo->beginTransaction();
         $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)");
-        $stmt->execute([$userId, $caption, $primaryImage]); // Keep primary image in posts table for backward compatibility/thumbnail
+        $stmt->execute([$userId, $caption, $primaryImage]);
         $postId = $pdo->lastInsertId();
 
         if (!empty($imagePaths)) {
@@ -485,13 +451,11 @@ function executeCreateListing($pdo, $userId, $data, $imagePaths) {
         }
     }
     
-    // Normalize City
     $city = CityNormalizer::normalize($city);
     if (!$city) {
         return ['response' => 'Vui lòng cho biết thành phố (Hà Nội, TP.HCM, Đà Nẵng).'];
     }
 
-    // Clean address to remove redundant city info
     $addr = preg_replace('/(,\s*)?(?:\bThành phố|\bTP)?\s*(?:\bHà Nội|\bHa Noi|\bHồ Chí Minh|\bHo Chi Minh|\bĐà Nẵng|\bDa Nang)\s*$/iu', '', $addr);
     $addr = trim($addr, " \t\n\r\0\x0B,");
 
