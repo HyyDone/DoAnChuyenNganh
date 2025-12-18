@@ -14,11 +14,33 @@ $category = isset($_GET['category']) ? $_GET['category'] : null;
 $newsList = [];
 
 try {
+    // Pagination Setup
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+    
+    // Count Total
     if ($category) {
-        $stmtList = $pdo->prepare("SELECT * FROM news WHERE category = ? ORDER BY created_at DESC");
-        $stmtList->execute([$category]);
+        $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM news WHERE category = ?");
+        $stmtCount->execute([$category]);
     } else {
-        $stmtList = $pdo->query("SELECT * FROM news ORDER BY created_at DESC");
+        $stmtCount = $pdo->query("SELECT COUNT(*) FROM news");
+    }
+    $totalItems = $stmtCount->fetchColumn();
+    $totalPages = ceil($totalItems / $limit);
+
+    // Get Data
+    if ($category) {
+        $stmtList = $pdo->prepare("SELECT * FROM news WHERE category = ? ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+        $stmtList->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmtList->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmtList->bindValue(1, $category); // bind param for question mark
+        $stmtList->execute();
+    } else {
+        $stmtList = $pdo->prepare("SELECT * FROM news ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+        $stmtList->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmtList->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmtList->execute();
     }
     $newsList = $stmtList->fetchAll();
 } catch (PDOException $e) {
@@ -306,6 +328,29 @@ $categories = [
                 </div>
             <?php endif; ?>
         </div>
+        
+        <!-- Pagination Controls -->
+        <?php if ($totalPages > 1): ?>
+        <div style="margin-top: 30px; display: flex; justify-content: center; gap: 5px;">
+            <?php 
+                $baseLink = '/news.php?' . ($category ? 'category=' . urlencode($category) . '&' : ''); 
+            ?>
+            
+            <?php if ($page > 1): ?>
+                <a href="<?= $baseLink ?>page=<?= $page - 1 ?>" style="padding: 8px 12px; border: 1px solid #ddd; background: white; text-decoration: none; color: #333; border-radius: 4px;">&laquo;</a>
+            <?php endif; ?>
+
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="<?= $baseLink ?>page=<?= $i ?>" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; <?= $i === $page ? 'background: #0866ff; color: white; border-color: #0866ff;' : 'background: white; color: #333;' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+
+            <?php if ($page < $totalPages): ?>
+                <a href="<?= $baseLink ?>page=<?= $page + 1 ?>" style="padding: 8px 12px; border: 1px solid #ddd; background: white; text-decoration: none; color: #333; border-radius: 4px;">&raquo;</a>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </main>
 </div>
 

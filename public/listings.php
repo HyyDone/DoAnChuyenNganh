@@ -25,7 +25,10 @@ if (isset($_SESSION['user_id'])) {
     <title>Thuê Trọ - Danh sách phòng</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
     <style>
         :root {
             --bg-color: #f0f2f5;
@@ -193,9 +196,72 @@ include __DIR__ . '/includes/header.php';
 ?>
 
 <div style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
-    <div style="display: grid; grid-template-columns: 300px 1fr 360px; gap: 24px;">
+    <div style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start;">
         
-        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: fit-content;">
+        <!-- List Column -->
+        <div>
+            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; flex-direction:column; gap: 15px;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div style="flex: 1;">
+                         <label style="font-weight:bold; font-size:14px; margin-bottom:5px; display:block;">Khoảng giá</label>
+                         <div id="priceSlider" style="margin: 0 10px 10px 10px;"></div>
+                         <div style="display:flex; justify-content:space-between; font-size:13px; color:#666;">
+                             <span id="priceMinDisplay"></span>
+                             <span id="priceMaxDisplay"></span>
+                         </div>
+                         <input type="hidden" id="filterPriceMin">
+                         <input type="hidden" id="filterPriceMax">
+                    </div>
+                </div>
+                
+                <div style="display:flex; gap:10px;">
+                    <div style="flex: 1;">
+                        <select id="filterCity" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" onchange="updateFilterDistricts()">
+                            <option value="">Tất cả thành phố</option>
+                            <option value="Ho Chi Minh">Hồ Chí Minh</option>
+                            <option value="Ha Noi">Hà Nội</option>
+                            <option value="Da Nang">Đà Nẵng</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <select id="filterDistrict" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                            <option value="">Tất cả Quận/Huyện</option>
+                        </select>
+                    </div>
+                     <div style="flex: 1;">
+                        <select id="filterRoomType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                            <option value="">Tất cả loại phòng</option>
+                            <option value="private">Riêng tư</option>
+                            <option value="share">Ở ghép</option>
+                            <option value="studio">Studio</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px; align-items:flex-end;">
+                     <div style="flex: 1;">
+                         <label style="font-weight:bold; font-size:14px; margin-bottom:5px; display:block;">Diện tích (m²)</label>
+                         <div style="display:flex; gap:5px; align-items:center;">
+                             <input type="number" id="filterAreaMin" placeholder="Từ" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width:100%;">
+                             <span>-</span>
+                             <input type="number" id="filterAreaMax" placeholder="Đến" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width:100%;">
+                         </div>
+                    </div>
+                    <div>
+                        <button onclick="loadListings()" style="background: #1877f2; color: white; border: none; padding: 9px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; height:37px;">Lọc</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 15px;">Danh sách phòng trọ</h3>
+            
+            <div id="listingsContainer">
+                <p style="text-align:center; color: #666;">Đang tải dữ liệu...</p>
+            </div>
+        </div>
+
+        <!-- Form Column -->
+        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%; height: fit-content; position: sticky; top: 20px;">
             <h3 style="margin-top: 0; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Đăng phòng</h3>
             <form id="postListingForm" enctype="multipart/form-data">
                 <div style="margin-bottom: 10px;">
@@ -205,6 +271,10 @@ include __DIR__ . '/includes/header.php';
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Giá (VNĐ)</label>
                     <input type="number" name="price" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Diện tích (m²)</label>
+                    <input type="number" name="area" step="0.1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Thành phố</label>
@@ -244,65 +314,93 @@ include __DIR__ . '/includes/header.php';
             </form>
         </div>
 
-        <div>
-            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-                <div style="flex: 1;">
-                    <input type="number" id="filterPriceMin" placeholder="Giá từ..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                </div>
-                 <div style="flex: 1;">
-                    <input type="number" id="filterPriceMax" placeholder="Đến giá..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                </div>
-                <div style="flex: 1;">
-                    <select id="filterCity" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                        <option value="">Tất cả thành phố</option>
-                        <option value="Ho Chi Minh">Hồ Chí Minh</option>
-                        <option value="Ha Noi">Hà Nội</option>
-                        <option value="Da Nang">Đà Nẵng</option>
-                    </select>
-                </div>
-                <div style="flex: 1;">
-                    <select id="filterRoomType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                        <option value="">Tất cả loại phòng</option>
-                        <option value="private">Riêng tư</option>
-                        <option value="share">Ở ghép</option>
-                        <option value="studio">Studio</option>
-                    </select>
-                </div>
-                <button onclick="loadListings()" style="background: #1877f2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Lọc</button>
-            </div>
+    </div>
+</div>
 
-            <h3 style="margin-bottom: 15px;">Danh sách phòng trọ</h3>
-            
-            <div id="listingsContainer">
-                <p style="text-align:center; color: #666;">Đang tải dữ liệu...</p>
-            </div>
-        </div>
+<!-- Floating Chat Widget -->
+<style>
+    .floating-chat-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        background: #0866ff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 30px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        cursor: pointer;
+        z-index: 1000;
+        transition: transform 0.2s;
+    }
+    .floating-chat-btn:hover {
+        transform: scale(1.1);
+    }
+    .floating-chat-box {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        z-index: 1000;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        animation: slideUp 0.3s ease;
+        border: 1px solid #ddd;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+</style>
 
-        <div style="height: fit-content;">
-            <div class="ai-chat-box">
-                <div class="ai-chat-header">
-                    <i class="fa-solid fa-robot"></i>
-                    Trợ lý AI
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
-                </div>
-                <div class="chat-image-preview-box" id="aiChatPreviewBox">
-                    <div id="aiChatPreviewContainer" style="display:flex; flex-wrap:wrap;"></div>
-                </div>
-                <div class="chat-input-area">
-                    <label for="aiChatFile" class="chat-upload-btn">
-                        <i class="fa-solid fa-image"></i>
-                    </label>
-                    <input type="file" id="aiChatFile" hidden accept="image/*" multiple>
-                    
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn...">
-                    <button class="chat-send-btn" onclick="sendChatMessage()">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
+<div class="floating-chat-btn" onclick="toggleChatBox()">
+    <i class="fa-solid fa-robot"></i>
+</div>
+
+<div class="floating-chat-box" id="floatingChatBox">
+    <div class="ai-chat-header">
+        <i class="fa-solid fa-robot"></i>
+        Trợ lý AI
+        <span style="margin-left:auto; cursor:pointer;" onclick="toggleChatBox()"><i class="fa-solid fa-xmark"></i></span>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
+    </div>
+    <div class="chat-image-preview-box" id="aiChatPreviewBox">
+        <div id="aiChatPreviewContainer" style="display:flex; flex-wrap:wrap;"></div>
+    </div>
+    <div class="chat-input-area">
+        <label for="aiChatFile" class="chat-upload-btn">
+            <i class="fa-solid fa-image"></i>
+        </label>
+        <input type="file" id="aiChatFile" hidden accept="image/*" multiple>
+        
+        <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn...">
+        <button class="chat-send-btn" onclick="sendChatMessage()">
+            <i class="fa-solid fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+function toggleChatBox() {
+    const box = document.getElementById('floatingChatBox');
+    if (box.style.display === 'none' || !box.style.display) {
+        box.style.display = 'flex';
+    } else {
+        box.style.display = 'none';
+    }
+}
+</script>
 
     </div>
 </div>
@@ -331,8 +429,55 @@ function updateDistricts() {
     });
 }
 
+function updateFilterDistricts() {
+    const city = document.getElementById('filterCity').value;
+    const districtSelect = document.getElementById('filterDistrict');
+    
+    districtSelect.innerHTML = '<option value="">Tất cả Quận/Huyện</option>';
+    
+    if (city && districtData[city]) {
+        districtData[city].forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            districtSelect.appendChild(opt);
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     updateDistricts();
+    
+    // Init Slider
+    var slider = document.getElementById('priceSlider');
+    noUiSlider.create(slider, {
+        start: [0, 20000000],
+        connect: true,
+        range: {
+            'min': 0,
+            'max': 20000000
+        },
+        step: 100000,
+        format: {
+            to: (v) => Math.round(v),
+            from: (v) => Number(v)
+        }
+    });
+
+    const minDisplay = document.getElementById('priceMinDisplay');
+    const maxDisplay = document.getElementById('priceMaxDisplay');
+    const minInput = document.getElementById('filterPriceMin');
+    const maxInput = document.getElementById('filterPriceMax');
+
+    slider.noUiSlider.on('update', function (values, handle) {
+        minInput.value = values[0];
+        maxInput.value = values[1];
+        
+        const fmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+        minDisplay.innerText = fmt.format(values[0]);
+        maxDisplay.innerText = fmt.format(values[1]);
+    });
+
     loadListings();
 
     window.previewListingImages = function(input) {
@@ -408,20 +553,31 @@ async function fetchUserFavorites() {
     }
 }
 
-async function loadListings() {
+let currentPage = 1;
+
+async function loadListings(page = 1) {
+    currentPage = page;
     await fetchUserFavorites();
 
     const priceMin = document.getElementById('filterPriceMin').value;
     const priceMax = document.getElementById('filterPriceMax').value;
     const city = document.getElementById('filterCity').value;
+    const district = document.getElementById('filterDistrict').value;
     const roomType = document.getElementById('filterRoomType').value;
+    const areaMin = document.getElementById('filterAreaMin').value;
+    const areaMax = document.getElementById('filterAreaMax').value;
 
     const params = new URLSearchParams({
         price_min: priceMin,
         price_max: priceMax,
         city: city,
+        district: district,
         room_type: roomType,
-        status: 'available'
+        area_min: areaMin,
+        area_max: areaMax,
+        status: 'available',
+        page: currentPage,
+        limit: 10
     });
 
     fetch(`/api/listings.php?${params.toString()}`)
@@ -450,7 +606,10 @@ async function loadListings() {
                             <h3 style="margin: 0 0 5px 0; font-size: 18px; color: #1c1e21;">${listing.title}</h3>
                             <p style="margin: 0 0 5px 0; color: #e91e63; font-weight: bold;">${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(listing.price)}</p>
                             <p style="margin: 0 0 5px 0; color: #65676b; font-size: 14px;">📍 ${listing.address}, ${listing.city}</p>
-                            <p style="margin: 0; color: #65676b; font-size: 14px;">🏠 ${listing.room_type === 'private' ? 'Riêng tư' : (listing.room_type === 'share' ? 'Ở ghép' : 'Studio')}</p>
+                            <p style="margin: 0; color: #65676b; font-size: 14px;">
+                                🏠 ${listing.room_type === 'private' ? 'Riêng tư' : (listing.room_type === 'share' ? 'Ở ghép' : 'Studio')}
+                                ${listing.area ? ` • <i class="fa-solid fa-ruler-combined"></i> ${listing.area}m²` : ''}
+                            </p>
                         </div>
                         <div style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">
                             <a href="/listing_detail.php?id=${listing.id}" style="display: inline-block; background: #e4e6eb; color: #050505; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 14px;">Chi tiết</a>
@@ -462,6 +621,10 @@ async function loadListings() {
                 `;
                 container.appendChild(item);
             });
+            
+            // Render Pagination
+            renderPagination(result.pagination);
+
         } else {
             container.innerHTML = '<p style="text-align:center; color: #666; padding: 20px;">Không tìm thấy phòng trọ nào phù hợp.</p>';
         }
@@ -470,6 +633,36 @@ async function loadListings() {
         console.error('Error:', error);
         document.getElementById('listingsContainer').innerHTML = '<p style="text-align:center; color: red;">Lỗi khi tải dữ liệu.</p>';
     });
+}
+
+function renderPagination(pagination) {
+    if (!pagination || pagination.total_pages <= 1) return;
+    const container = document.getElementById('listingsContainer');
+    
+    let html = '<div style="margin-top: 20px; display: flex; justify-content: center; gap: 5px; width: 100%;">';
+    
+    // Prev
+    if (pagination.current_page > 1) {
+        html += `<button onclick="loadListings(${pagination.current_page - 1})" style="padding: 8px 12px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;">&laquo;</button>`;
+    }
+
+    // Pages
+    for (let i = 1; i <= pagination.total_pages; i++) {
+            const active = i === pagination.current_page ? 'background: #0866ff; color: white; border-color: #0866ff;' : 'background: white; color: #333;';
+            html += `<button onclick="loadListings(${i})" style="padding: 8px 12px; border: 1px solid #ddd; cursor: pointer; border-radius: 4px; ${active}">${i}</button>`;
+    }
+
+    // Next
+    if (pagination.current_page < pagination.total_pages) {
+        html += `<button onclick="loadListings(${pagination.current_page + 1})" style="padding: 8px 12px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;">&raquo;</button>`;
+    }
+
+    html += '</div>';
+    
+    // Append pagination div
+    const paginationDiv = document.createElement('div');
+    paginationDiv.innerHTML = html;
+    container.appendChild(paginationDiv);
 }
 
 function toggleFavorite(listingId, btn) {

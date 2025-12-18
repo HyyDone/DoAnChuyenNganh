@@ -163,6 +163,17 @@ $user = $stmt->fetch();
                         Vui lòng chọn phòng bên trái để gửi yêu cầu.
                     </p>
                 </form>
+
+                <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
+
+                <div class="panel-title" style="border:none; padding-bottom:0; margin-bottom:10px;">Đặt lịch xem phòng</div>
+                <div id="viewingContent">
+                    <div class="form-group">
+                        <label class="form-label">Chọn thời gian</label>
+                        <input type="datetime-local" id="viewingTime" class="form-control" min="<?= date('Y-m-d\TH:i') ?>">
+                    </div>
+                    <button type="button" class="btn-submit" onclick="bookViewing()">Xét lịch</button>
+                </div>
             </div>
         </div>
     </div>
@@ -299,6 +310,35 @@ $user = $stmt->fetch();
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
+            }
+        }
+
+        async function bookViewing() {
+            if (!selectedId) {
+                alert('Vui lòng chọn phòng trước!');
+                return;
+            }
+            const time = document.getElementById('viewingTime').value;
+            if (!time) {
+                alert('Vui lòng chọn thời gian!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/rentals.php?action=schedule_viewing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ listing_id: selectedId, appointment_time: time })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Đã gửi yêu cầu xem phòng! Chủ nhà sẽ xác nhận sớm.');
+                } else {
+                    alert('Lỗi: ' + (result.error || result.message || 'Không thể gửi yêu cầu'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Có lỗi xảy ra.');
             }
         }
     </script>

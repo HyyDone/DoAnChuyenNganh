@@ -525,6 +525,48 @@ if (isset($_SESSION['user_id'])) {
             display: flex;
             align-items: center;
         }
+        /* Floating Chat Styles */
+        .floating-chat-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #0866ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+        .floating-chat-btn:hover {
+            transform: scale(1.1);
+        }
+        .floating-chat-box {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+            border: 1px solid #ddd;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
     </style>
 </head>
 
@@ -559,34 +601,49 @@ if (isset($_SESSION['user_id'])) {
             </div>
         </div>
 
-        <!-- Right Sidebar (AI Chat) -->
-        <div class="right-sidebar">
-            <div class="ai-chat-box">
-                <div class="ai-chat-header">
-                    <i class="fa-solid fa-robot"></i>
-                    Trợ lý AI
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
-                </div>
-                <!-- Updated Preview Box for Multiple Images -->
-                <div class="chat-image-preview-box" id="aiChatPreviewBox">
-                    <div id="aiChatPreviewContainer" style="display:flex; flex-wrap:wrap;"></div>
-                </div>
-                <div class="chat-input-area">
-                    <label for="aiChatFile" class="chat-upload-btn">
-                        <i class="fa-solid fa-image"></i>
-                    </label>
-                    <input type="file" id="aiChatFile" hidden accept="image/*" multiple>
-                    
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn...">
-                    <button class="chat-send-btn" onclick="sendChatMessage()">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
+    </div> 
+    <!-- End main-container -->
+
+    <!-- Floating Chat Widget -->
+    <div class="floating-chat-btn" onclick="toggleChatBox()">
+        <i class="fa-solid fa-robot"></i>
+    </div>
+
+    <div class="floating-chat-box" id="floatingChatBox">
+        <div class="ai-chat-header">
+            <i class="fa-solid fa-robot"></i>
+            Trợ lý AI
+            <span style="margin-left:auto; cursor:pointer;" onclick="toggleChatBox()"><i class="fa-solid fa-xmark"></i></span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-message message-bot">Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?</div>
+        </div>
+        <div class="chat-image-preview-box" id="aiChatPreviewBox">
+            <div id="aiChatPreviewContainer" style="display:flex; flex-wrap:wrap;"></div>
+        </div>
+        <div class="chat-input-area">
+            <label for="aiChatFile" class="chat-upload-btn">
+                <i class="fa-solid fa-image"></i>
+            </label>
+            <input type="file" id="aiChatFile" hidden accept="image/*" multiple>
+            
+            <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn...">
+            <button class="chat-send-btn" onclick="sendChatMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
         </div>
     </div>
+
+    <script>
+    function toggleChatBox() {
+        const box = document.getElementById('floatingChatBox');
+        if (box.style.display === 'none' || !box.style.display) {
+            box.style.display = 'flex';
+        } else {
+            box.style.display = 'none';
+        }
+    }
+    </script>
 
     <script src="/assets/js/ai_chat.js?v=<?= time() ?>"></script>
 
@@ -717,7 +774,7 @@ if (isset($_SESSION['user_id'])) {
         }
     </style>
 
-    <?php include __DIR__ . '/includes/footer.php'; ?>
+
 
     <script>
         // DOM Elements

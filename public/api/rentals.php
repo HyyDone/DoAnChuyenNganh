@@ -184,7 +184,7 @@ try {
                 throw new Exception('Permission denied');
             }
             
-            $sql = "UPDATE listings SET title = ?, description = ?, price = ?, address = ?, city = ?, district = ?, room_type = ?, status = ? WHERE id = ?";
+            $sql = "UPDATE listings SET title = ?, description = ?, price = ?, address = ?, city = ?, district = ?, room_type = ?, status = ?, area = ? WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 $data['title'],
@@ -195,6 +195,7 @@ try {
                 $data['district'],
                 $data['room_type'],
                 $data['status'],
+                $data['area'] ?? null,
                 $listingId
             ]);
             
@@ -546,6 +547,235 @@ try {
             
             $del = $pdo->prepare("DELETE FROM contracts WHERE id = ?");
             $del->execute([$id]);
+            
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'schedule_viewing':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $listingId = $data['listing_id'] ?? 0;
+            $time = $data['appointment_time'] ?? '';
+
+            if (!$listingId || !$time) throw new Exception('Missing required fields');
+
+            // Get Owner ID
+            $stmt = $pdo->prepare("SELECT owner_id, title FROM listings WHERE id = ?");
+            $stmt->execute([$listingId]);
+            $listing = $stmt->fetch();
+
+            if (!$listing) throw new Exception('Listing not found');
+
+            $ins = $pdo->prepare("INSERT INTO viewing_appointments (listing_id, tenant_id, owner_id, appointment_time, status) VALUES (?, ?, ?, ?, 'pending')");
+            $ins->execute([$listingId, $userId, $listing['owner_id'], $time]);
+            $apptId = $pdo->lastInsertId();
+
+            // Notify Owner
+            $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'viewing_request', ?, ?)");
+            $msg = "Có người muốn xem phòng '{$listing['title']}' vào lúc " . date('H:i d/m/Y', strtotime($time));
+            $nStmt->execute([$listing['owner_id'], $apptId, $msg]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_viewing_appointments':
+            $ownerStmt = $pdo->prepare("
+                SELECT va.*, l.title, l.address, u.full_name as tenant_name, u.phone as tenant_phone
+                FROM viewing_appointments va
+                JOIN listings l ON va.listing_id = l.id
+                JOIN users u ON va.tenant_id = u.id
+                WHERE l.owner_id = ?
+                ORDER BY va.appointment_time DESC
+            ");
+            $ownerStmt->execute([$userId]);
+            $ownerAppts = $ownerStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $tenantStmt = $pdo->prepare("
+                SELECT va.*, l.title, l.address, u.full_name as owner_name, u.phone as owner_phone
+                FROM viewing_appointments va
+                JOIN listings l ON va.listing_id = l.id
+                JOIN users u ON l.owner_id = u.id
+                WHERE va.tenant_id = ?
+                ORDER BY va.appointment_time DESC
+            ");
+            $tenantStmt->execute([$userId]);
+            $tenantAppts = $tenantStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            echo json_encode(['owner' => $ownerAppts, 'tenant' => $tenantAppts]);
+            break;
+
+        case 'update_viewing_status':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $apptId = $data['id'] ?? 0;
+            $status = $data['status'] ?? '';
+
+            if (!in_array($status, ['confirmed', 'cancelled', 'completed'])) {
+                throw new Exception('Invalid status');
+            }
+
+            $check = $pdo->prepare("
+                SELECT va.*, l.owner_id, l.title
+                FROM viewing_appointments va
+                JOIN listings l ON va.listing_id = l.id
+                WHERE va.id = ?
+            ");
+            $check->execute([$apptId]);
+            $appt = $check->fetch();
+
+            if (!$appt) throw new Exception('Appointment not found');
+
+            if ($userId == $appt['owner_id']) {
+            } elseif ($userId == $appt['tenant_id'] && $status == 'cancelled') {
+            } else {
+                throw new Exception('Permission denied');
+            }
+
+            $upd = $pdo->prepare("UPDATE viewing_appointments SET status = ? WHERE id = ?");
+            $upd->execute([$status, $apptId]);
+
+            if ($userId == $appt['owner_id']) {
+                $targetId = $appt['tenant_id'];
+                $role = "Chủ nhà";
+            } else {
+                $targetId = $appt['owner_id'];
+                $role = "Người thuê";
+            }
+            
+            $statusText = match($status) {
+                'confirmed' => 'ĐÃ XÁC NHẬN',
+                'cancelled' => 'ĐÃ HỦY',
+                'completed' => 'ĐÃ HOÀN THÀNH',
+                default => $status
+            };
+
+            $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'viewing_update', ?, ?)");
+            $msg = "$role đã $statusText lịch xem phòng '{$appt['title']}' vào lúc " . date('H:i d/m/Y', strtotime($appt['appointment_time']));
+            $nStmt->execute([$targetId, $apptId, $msg]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'delete_viewing':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $apptId = $data['id'] ?? 0;
+
+            $check = $pdo->prepare("
+                SELECT va.*, l.owner_id
+                FROM viewing_appointments va
+                JOIN listings l ON va.listing_id = l.id
+                WHERE va.id = ?
+            ");
+            $check->execute([$apptId]);
+            $appt = $check->fetch();
+
+            if (!$appt) throw new Exception('Appointment not found');
+
+            if ($userId != $appt['owner_id'] && $userId != $appt['tenant_id']) {
+                throw new Exception('Permission denied');
+            }
+
+            $del = $pdo->prepare("DELETE FROM viewing_appointments WHERE id = ?");
+            $del->execute([$apptId]);
+
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_active_rentals_for_stats':
+            // Fetch active rentals for dropdown (only confirmed bookings)
+            $stmt = $pdo->prepare("
+                SELECT b.id as booking_id, l.title, l.price, u.full_name as tenant_name
+                FROM bookings b
+                JOIN listings l ON b.listing_id = l.id
+                JOIN users u ON b.tenant_id = u.id
+                WHERE l.owner_id = ? AND b.status = 'confirmed'
+                ORDER BY l.title ASC
+            ");
+            $stmt->execute([$userId]);
+            $rentals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode($rentals);
+            break;
+
+        case 'get_payment_stats':
+            $year = $_GET['year'] ?? date('Y');
+            $month = $_GET['month'] ?? 0; // 0 means all months of the year
+            
+            // Build query for rental_payments using payment_for_month
+            // We use COALESCE to fallback to payment_date if payment_for_month is null (for old records)
+            $col = "COALESCE(payment_for_month, payment_date)";
+            
+            $sql = "
+                SELECT MONTH($col) as month, SUM(amount) as total
+                FROM rental_payments rp
+                JOIN bookings b ON rp.booking_id = b.id
+                JOIN listings l ON b.listing_id = l.id
+                WHERE l.owner_id = ? AND YEAR($col) = ?
+            ";
+            $params = [$userId, $year];
+
+            if ($month > 0) {
+                $sql .= " AND MONTH($col) = ?";
+                $params[] = $month;
+            }
+
+            $sql .= " GROUP BY MONTH($col)";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // [month => total]
+            
+            // Fill missing months with 0
+            $result = [];
+            for ($i = 1; $i <= 12; $i++) {
+                if ($month > 0 && $month != $i) continue;
+                $result[$i] = (float)($stats[$i] ?? 0);
+            }
+            
+            echo json_encode($result);
+            break;
+
+        case 'add_payment':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                throw new Exception('Invalid method');
+            }
+            $data = json_decode(file_get_contents('php://input'), true);
+            $bookingId = $data['booking_id'] ?? 0;
+            $amount = $data['amount'] ?? 0;
+            $date = $data['date'] ?? date('Y-m-d');
+            $note = $data['note'] ?? '';
+            // New field: payment_for_month (format YYYY-MM) -> convert to YYYY-MM-01
+            $forMonth = $data['payment_for_month'] ?? null; 
+            if ($forMonth) {
+                $forMonth .= '-01'; // Append day 1
+            } else {
+                $forMonth = $date; // Default to payment date if empty
+            }
+
+            if (!$bookingId || !$amount) throw new Exception('Missing required fields');
+
+            // Verify owner
+            $check = $pdo->prepare("
+                SELECT l.owner_id 
+                FROM bookings b 
+                JOIN listings l ON b.listing_id = l.id 
+                WHERE b.id = ?
+            ");
+            $check->execute([$bookingId]);
+            $info = $check->fetch();
+
+            if (!$info || $info['owner_id'] != $userId) {
+                throw new Exception('Permission denied');
+            }
+
+            $ins = $pdo->prepare("INSERT INTO rental_payments (booking_id, amount, payment_date, payment_for_month, note) VALUES (?, ?, ?, ?, ?)");
+            $ins->execute([$bookingId, $amount, $date, $forMonth, $note]);
             
             echo json_encode(['success' => true]);
             break;

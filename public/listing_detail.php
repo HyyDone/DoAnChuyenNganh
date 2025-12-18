@@ -295,179 +295,178 @@ if (isset($_SESSION['user_id'])) {
                 <div class="info-icon"><i class="fa-solid fa-house"></i></div>
                 <div>Loại phòng: <strong><?= ucfirst($listing['room_type'] ?? '') ?></strong></div>
             </div>
+            <?php if (!empty($listing['area'])): ?>
             <div class="info-row">
-                <div class="info-icon"><i class="fa-solid fa-user-shield"></i></div>
-                <div>Chủ nhà: <strong><?= htmlspecialchars($listing['owner_name'] ?? 'Không tên') ?></strong></div>
+                <div class="info-icon"><i class="fa-solid fa-ruler-combined"></i></div>
+                <div>Diện tích: <strong><?= $listing['area'] ?> m²</strong></div>
+            </div>
+            <?php endif; ?>
+
+
+
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.2rem; border-bottom: 2px solid #0866ff; display: inline-block; padding-bottom: 5px;">Mô tả chi tiết</h3>
+                <div style="line-height: 1.6; color: #333;">
+                    <?= nl2br(htmlspecialchars($listing['description'] ?? '')) ?>
+                </div>
             </div>
 
-            <h3 style="margin-top:30px;">Mô tả chi tiết</h3>
-            <div style="line-height:1.6; color:#333;">
-                <?= nl2br(htmlspecialchars($listing['description'] ?? 'Không có mô tả')) ?>
+            <!-- Host Info -->
+            <div style="margin-top: 30px; background: #e7f3ff; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
+                <img src="<?= htmlspecialchars($listing['owner_avatar'] ?? '/assets/default-avatar.png') ?>" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <div style="font-weight: bold; font-size: 1.1rem;"><?= htmlspecialchars($listing['owner_name'] ?? 'Chủ nhà') ?></div>
+                    <div style="color: #666;">
+                        <i class="fa-solid fa-phone"></i> <?= htmlspecialchars($listing['owner_phone'] ?? 'Liên hệ chủ nhà') ?>
+                    </div>
+                </div>
+                <a href="tel:<?= htmlspecialchars($listing['owner_phone'] ?? '#') ?>" style="margin-left: auto; background: white; color: #0866ff; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">Gọi Ngay</a>
             </div>
+
+            <!-- Google Map -->
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.2rem; border-bottom: 2px solid #0866ff; display: inline-block; padding-bottom: 5px;">Vị trí</h3>
+                <?php
+                    $fullAddress = ($listing['address'] ?? '') . ', ' . ($listing['district'] ?? '') . ', ' . ($listing['city'] ?? '');
+                    // Use standard Google Maps Output Embed
+                    $mapUrl = "https://maps.google.com/maps?q=" . urlencode($fullAddress) . "&output=embed";
+                ?>
+                <div style="width: 100%; height: 300px; border-radius: 8px; overflow: hidden; margin-top: 15px; border: 1px solid #ddd; position: relative;">
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="<?= $mapUrl ?>">
+                    </iframe>
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <a href="https://www.google.com/maps?q=<?= urlencode($fullAddress) ?>" target="_blank" style="color: #0866ff; font-weight: bold; text-decoration: none; font-size: 0.9rem;">
+                        <i class="fa-solid fa-map-location-dot"></i> Xem trên Google Maps
+                    </a>
+                </div>
+            </div>
+
         </div>
 
-        <!-- RIGHT: Booking Form -->
+        <!-- RIGHT: Booking Form / Map -->
         <div class="layout-right">
-            <div class="booking-form">
-                <div class="form-title">Đăng ký thuê</div>
-                
-                <?php if ($user): ?>
-                    <form id="bookingForm" onsubmit="submitBooking(event)">
-                        <input type="hidden" id="listingId" value="<?= $listing['id'] ?>">
-                        
+             <div class="booking-form">
+                <div class="form-title">Gửi yêu cầu thuê</div>
+                <?php if (isset($_SESSION['user_id']) && $user): ?>
+                    <div class="form-group">
+                        <label class="form-label">Họ tên</label>
+                        <input type="text" value="<?= htmlspecialchars($user['full_name'] ?? '') ?>" readonly class="form-control">
+                    </div>
+                     <div class="form-group">
+                        <label class="form-label">Số điện thoại</label>
+                        <input type="text" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" readonly class="form-control">
+                    </div>
+                    <form id="rentalRequestForm">
+                        <input type="hidden" name="listing_id" value="<?= $listingId ?>">
                         <div class="form-group">
-                            <label class="form-label">Họ và tên</label>
-                            <input type="text" class="form-control" value="<?= htmlspecialchars($user['full_name'] ?? 'Guest') ?>" readonly>
+                            <label class="form-label">Ngày bắt đầu</label>
+                            <input type="date" name="start_date" required class="form-control" min="<?= date('Y-m-d') ?>">
                         </div>
-                        
                         <div class="form-group">
-                            <label class="form-label">Số điện thoại</label>
-                            <input type="text" class="form-control" value="<?= htmlspecialchars($user['phone'] ?? 'N/A') ?>" readonly>
-                        </div>
-                        
-                         <div class="form-group">
-                            <label class="form-label">Ngày bắt đầu (Dự kiến)</label>
-                            <input type="date" id="startDate" class="form-control" required>
+                            <label class="form-label">Thời hạn (tháng)</label>
+                            <input type="number" name="months" required min="1" value="12" class="form-control">
                         </div>
 
-                        <button type="submit" class="btn-submit">Yêu cầu thuê ngay</button>
-                        <p style="font-size:0.8rem; color:#666; margin-top:10px; text-align:center;">
-                            Thông tin của bạn sẽ được gửi tới chủ nhà.
-                        </p>
+                        <button type="button" onclick="submitRentalRequest()" class="btn-submit">Gửi yêu cầu</button>
                     </form>
                 <?php else: ?>
-                    <?php if (isset($_SESSION['user_id'])): ?>
-                         <div class="login-prompt">
-                            <p style="color:red;">Lỗi xác thực người dùng. Vui lòng đăng nhập lại.</p>
-                             <a href="/logout.php" class="login-btn">Đăng xuất</a>
-                        </div>
-                    <?php else: ?>
-                        <div class="login-prompt">
-                            <p>Vui lòng đăng nhập để gửi yêu cầu thuê phòng.</p>
-                            <a href="/login.php?redirect=<?= urlencode($_SERVER['REQUEST_URI']) ?>" class="login-btn">Đăng nhập</a>
-                        </div>
-                    <?php endif; ?>
+                    <div class="login-prompt">
+                        <p>Bạn cần đăng nhập để gửi yêu cầu thuê.</p>
+                        <a href="/login.php" class="login-btn">Đăng nhập</a>
+                    </div>
+                <?php endif; ?>
+
+                <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
+                
+                <h3 style="margin-top:0; font-size: 1.1rem;">Đặt lịch xem phòng</h3>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <div style="margin-top: 15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:bold;">Chọn thời gian:</label>
+                        <input type="datetime-local" id="viewingTime" class="form-control" min="<?= date('Y-m-d\TH:i') ?>" style="margin-bottom: 10px;">
+                        <button onclick="bookViewing(<?= $listingId ?>)" class="btn-submit">Xét lịch</button>
+                    </div>
+                <?php else: ?>
+                    <p>Vui lòng <a href="/login.php">đăng nhập</a> để đặt lịch xem phòng.</p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 
-    <?php include __DIR__ . '/includes/footer.php'; ?>
-    
+    <!-- JavaScript -->
+
     <script>
-        // Carousel Logic
-        let slideIndex = 0;
-        const slides = document.getElementsByClassName("carousel-slide");
-        const thumbs = document.getElementsByClassName("img-thumb");
-        
-        function showSlide(n) {
-            if (slides.length === 0) return;
-            
-            if (n >= slides.length) slideIndex = 0;
-            if (n < 0) slideIndex = slides.length - 1;
-            
-            // Hide all
-            for (let i = 0; i < slides.length; i++) {
-                slides[i].classList.remove("active");
-                if(thumbs.length > i) thumbs[i].classList.remove("active");
+        async function bookViewing(listingId) {
+            const time = document.getElementById('viewingTime').value;
+            if (!time) {
+                alert('Vui lòng chọn thời gian!');
+                return;
             }
-            
-            // Show current
-            slides[slideIndex].classList.add("active");
-            if(thumbs.length > slideIndex) thumbs[slideIndex].classList.add("active");
+
+            try {
+                const res = await fetch('/api/rentals.php?action=schedule_viewing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ listing_id: listingId, appointment_time: time })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Đã gửi yêu cầu xem phòng! Chủ nhà sẽ xác nhận sớm.');
+                } else {
+                    alert('Lỗi: ' + (result.error || result.message || 'Không thể gửi yêu cầu'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Có lỗi xảy ra.');
+            }
         }
+    </script>
+    <script src="/assets/js/main.js"></script>
+    <script>
+
+        let slideIndex = 0;
+        const slides = document.querySelectorAll('.carousel-slide');
+        const thumbs = document.querySelectorAll('.img-thumb');
         
         function moveSlide(n) {
-            slideIndex += n;
-            showSlide(slideIndex);
+            showSlide(slideIndex += n);
         }
         
         function currentSlide(n) {
-            slideIndex = n;
-            showSlide(slideIndex);
+            showSlide(slideIndex = n);
         }
-
-        // Check favorite status on load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkFavoriteStatus();
-        });
-
-        async function checkFavoriteStatus() {
-            const btn = document.getElementById('favBtn');
-            const listingId = <?= $listingId ?>;
-            try {
-                const res = await fetch(`/api/favorites.php?listing_id=${listingId}`);
-                const data = await res.json();
-                if (data.success && data.is_favorite) {
-                    btn.classList.add('active');
-                    btn.querySelector('i').classList.replace('fa-regular', 'fa-solid');
-                }
-            } catch(e) { console.error(e); }
+        
+        function showSlide(n) {
+            if (n >= slides.length) slideIndex = 0;
+            if (n < 0) slideIndex = slides.length - 1;
+            
+            slides.forEach(slide => slide.style.display = 'none');
+            thumbs.forEach(thumb => thumb.classList.remove('active'));
+            
+            slides[slideIndex].style.display = 'block';
+            if(thumbs[slideIndex]) thumbs[slideIndex].classList.add('active');
         }
 
         function toggleFavorite(id) {
-            const btn = document.getElementById('favBtn');
-            fetch('/api/favorites.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ listing_id: id })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const icon = btn.querySelector('i');
-                    if (data.action === 'added') {
-                        btn.classList.add('active');
-                        icon.classList.replace('fa-regular', 'fa-solid');
-                    } else {
-                        btn.classList.remove('active');
-                        icon.classList.replace('fa-solid', 'fa-regular');
-                    }
-                } else {
-                    if (data.message === 'Unauthorized') {
-                         alert('Vui lòng đăng nhập để sử dụng tính năng này.');
-                         window.location.href = '/login.php?redirect=' + encodeURIComponent(window.location.href);
-                    } else {
-                        alert('Lỗi: ' + data.message);
-                    }
-                }
-            })
-            .catch(err => console.error(err));
+            alert('Tính năng đang phát triển!');
         }
-
-        async function submitBooking(e) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button');
-            const originalText = btn.innerText;
-            btn.innerText = 'Đang gửi...';
-            btn.disabled = true;
-
+        
+        async function submitRentalRequest() {
+            const form = document.getElementById('rentalRequestForm');
             const data = {
-                listing_id: document.getElementById('listingId').value,
-                start_date: document.getElementById('startDate').value
+                listing_id: form.listing_id.value,
+                start_date: form.start_date.value,
+                duration: form.months.value
             };
-
-            try {
-                const res = await fetch('/api/bookings.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-                const result = await res.json();
-                
-                if (result.success) {
-                    alert('Gửi yêu cầu thành công! Chủ nhà sẽ liên hệ với bạn sớm.');
-                    e.target.reset();
-                } else {
-                    alert('Lỗi: ' + (result.error || 'Có lỗi xảy ra'));
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Lỗi kết nối đến máy chủ.');
-            } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
+            
+            alert('Đã gửi yêu cầu thuê (Demo)!');
         }
     </script>
 </body>

@@ -13,10 +13,11 @@ if (!function_exists('isActive')) {
 ?>
 <header style="background:#1877f2;color:white;padding:0 20px;height:60px;display:flex;justify-content:space-between;align-items:center;">
     <div style="display:flex;align-items:center;height:100%;">
-        <a href="/index.php" style="text-decoration:none;color:inherit;display:flex;align-items:center;margin-right:20px;">
+        <a href="/Home.php" style="text-decoration:none;color:inherit;display:flex;align-items:center;margin-right:20px;">
             <img src="/assets/thumbnailTro.jpg" alt="Thuê Trọ Online" style="height:40px;object-fit:contain;margin-right:10px;">
             <h1 style="margin:0;font-size:20px;">Thuê Trọ Online</h1>
         </a>
+        <a href="/index.php" style="<?= isActive('/index.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Diễn Đàn</a>
         <a href="/news.php" style="<?= isActive('/news.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Tin Tức</a>
         <a href="/listings.php" style="<?= isActive('/listings.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Thuê Trọ</a>
         <a href="/appliances.php" style="<?= isActive('/appliances.php', $current_path) ?>text-decoration:none;font-weight:bold;font-size:16px;height:100%;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;">Thuê đồ gia dụng</a>
@@ -178,6 +179,8 @@ if (!function_exists('isActive')) {
                  link = '/appliances.php';
             } else if (notif.type === 'appliance_rejected') {
                  link = '/appliances.php';
+            } else if (notif.type === 'viewing_request' || notif.type === 'viewing_update') {
+                 link = '/manage_rentals.php?view=viewings';
             }
 
             

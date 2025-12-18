@@ -31,14 +31,51 @@ if ($method === 'GET') {
              $sql .= " AND l.room_type = ?";
              $params[] = $_GET['room_type'];
         }
+        if (!empty($_GET['district'])) {
+            $sql .= " AND l.district LIKE ?";
+            $params[] = '%' . $_GET['district'] . '%';
+        }
+        if (!empty($_GET['area_min'])) {
+            $sql .= " AND l.area >= ?";
+            $params[] = $_GET['area_min'];
+        }
+        if (!empty($_GET['area_max'])) {
+            $sql .= " AND l.area <= ?";
+            $params[] = $_GET['area_max'];
+        }
 
-        $sql .= " ORDER BY l.created_at DESC";
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+        $offset = ($page - 1) * $limit;
+
+        $countSql = "SELECT COUNT(*) FROM listings l WHERE l.status = 'available'";
+        if (!empty($_GET['price_min'])) $countSql .= " AND l.price >= " . (int)$_GET['price_min'];
+        if (!empty($_GET['price_max'])) $countSql .= " AND l.price <= " . (int)$_GET['price_max'];
+        if (!empty($_GET['city'])) $countSql .= " AND l.city LIKE " . $pdo->quote('%' . $_GET['city'] . '%');
+        if (!empty($_GET['room_type'])) $countSql .= " AND l.room_type = " . $pdo->quote($_GET['room_type']);
+        if (!empty($_GET['district'])) $countSql .= " AND l.district LIKE " . $pdo->quote('%' . $_GET['district'] . '%');
+        if (!empty($_GET['area_min'])) $countSql .= " AND l.area >= " . (int)$_GET['area_min'];
+        if (!empty($_GET['area_max'])) $countSql .= " AND l.area <= " . (int)$_GET['area_max'];
+
+        $totalStmt = $pdo->query($countSql);
+        $totalItems = $totalStmt->fetchColumn();
+        $totalPages = ceil($totalItems / $limit);
+
+        $sql .= " ORDER BY l.created_at DESC LIMIT $limit OFFSET $offset";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $listings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true, 'data' => $listings]);
+        echo json_encode([
+            'success' => true, 
+            'data' => $listings,
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $totalPages,
+                'total_items' => $totalItems
+            ]
+        ]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -63,6 +100,7 @@ if ($method === 'GET') {
         $city = $_POST['city'] ?? 'Ho Chi Minh';
         $district = $_POST['district'] ?? '';
         $room_type = $_POST['room_type'] ?? 'private';
+        $area = $_POST['area'] ?? null;
 
         if (empty($price) || empty($address)) {
             throw new Exception("Giá và địa chỉ là bắt buộc.");
@@ -70,8 +108,8 @@ if ($method === 'GET') {
 
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO listings (owner_id, title, description, price, address, city, district, room_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$owner_id, $title, $description, $price, $address, $city, $district, $room_type]);
+        $stmt = $pdo->prepare("INSERT INTO listings (owner_id, title, description, price, area, address, city, district, room_type, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available')");
+        $stmt->execute([$owner_id, $title, $description, $price, $area, $address, $city, $district, $room_type]);
         $listing_id = $pdo->lastInsertId();
 
         if (!empty($_FILES['images']['name'][0])) {

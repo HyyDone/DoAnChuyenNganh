@@ -15,6 +15,7 @@ if (!isset($_SESSION['user_id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #0866ff;
@@ -260,6 +261,9 @@ if (!isset($_SESSION['user_id'])) {
             <button class="nav-btn" onclick="switchView('contracts', this)">
                 <i class="fa-solid fa-file-contract"></i> Hợp đồng
             </button>
+            <button class="nav-btn" onclick="switchView('viewings', this)">
+                <i class="fa-regular fa-calendar-check"></i> Lịch xem phòng
+            </button>
         </div>
 
         <!-- CENTER COLUMN -->
@@ -319,6 +323,11 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="form-group">
                     <label class="form-label">Giá (VNĐ)</label>
                     <input type="number" id="edit-price" class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Diện tích (m²)</label>
+                    <input type="number" id="edit-area" class="form-input" step="0.1">
                 </div>
                 
                 <div class="form-group">
@@ -451,6 +460,56 @@ if (!isset($_SESSION['user_id'])) {
                 <div id="contract-info-content"></div>
                 <div id="contract-actions-container" style="margin-top:20px;"></div>
             </div>
+
+            <div id="viewing-details" class="editor-form">
+                <h3><i class="fa-regular fa-calendar-check"></i> Chi tiết lịch hẹn</h3>
+                <div id="viewing-info-content"></div>
+            </div>
+
+            <!-- STATS PAYMENT FORM -->
+            <div id="stats-payment-form" class="editor-form">
+                <h3><i class="fa-solid fa-money-bill-wave"></i> Ghi nhận doanh thu</h3>
+                <form onsubmit="submitStatsPayment(event)">
+                    <div class="form-group">
+                        <label class="form-label">Chọn phòng đã thuê</label>
+                        <select id="stat-pay-booking" class="form-select" required onchange="onBookingSelect(this)">
+                            <option value="">-- Chọn phòng --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Người thuê</label>
+                        <input type="text" id="stat-pay-tenant" class="form-input" readonly style="background:#eee;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Giá phòng</label>
+                        <input type="text" id="stat-pay-price" class="form-input" readonly style="background:#eee;">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Số tiền thực nhận</label>
+                        <input type="number" id="stat-pay-amount" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ngày thu tiền</label>
+                        <input type="date" id="stat-pay-date" class="form-input" required value="<?php echo date('Y-m-d'); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Cho tháng (Tính vào doanh thu tháng này)</label>
+                        <input type="month" id="stat-pay-for-month" class="form-input" required value="<?php echo date('Y-m'); ?>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Ghi chú</label>
+                        <textarea id="stat-pay-note" class="form-textarea"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Lưu</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -514,7 +573,7 @@ if (!isset($_SESSION['user_id'])) {
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const view = urlParams.get('view');
-            if (view && ['my_listings', 'my_rentals', 'stats'].includes(view)) {
+            if (view && ['my_listings', 'my_rentals', 'stats', 'viewings'].includes(view)) {
                 // Find button
                 const btn = document.querySelector(`.nav-btn[onclick*="'${view}'"]`);
                 if (btn) {
@@ -537,7 +596,8 @@ if (!isset($_SESSION['user_id'])) {
                 'my_listings': 'Danh sách nhà cho thuê',
                 'my_rentals': 'Nhà đang thuê',
                 'contracts': 'Quản lý hợp đồng',
-                'stats': 'Thống kê'
+                'stats': 'Thống kê',
+                'viewings': 'Lịch xem phòng'
             };
             document.querySelector('.section-title').innerText = titles[view];
 
@@ -556,7 +616,36 @@ if (!isset($_SESSION['user_id'])) {
             container.innerHTML = '<p>Đang tải...</p>';
 
             if (currentView === 'stats') {
-                container.innerHTML = '<p>Chức năng thống kê chưa được triển khai.</p>';
+                container.innerHTML = `
+                    <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                        <div style="display:flex; gap:10px; margin-bottom:20px;">
+                            <select id="stats-month" class="form-select" style="width:auto;" onchange="loadStats()">
+                                <option value="0">Cả năm</option>
+                                ${Array.from({length: 12}, (_, i) => `<option value="${i+1}">Tháng ${i+1}</option>`).join('')}
+                            </select>
+                            <select id="stats-year" class="form-select" style="width:auto;" onchange="loadStats()">
+                                ${Array.from({length: new Date().getFullYear() - 2019}, (_, i) => {
+                                    const y = 2020 + i;
+                                    return `<option value="${y}" ${y === new Date().getFullYear() ? 'selected' : ''}>${y}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div style="height:350px;">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                `;
+                loadStats();
+                
+                loadStats();
+                
+                resetRightColumn();
+                document.querySelector('.empty-state').style.display = 'none';
+                document.getElementById('stats-payment-form').classList.add('active');
+                
+                if (document.getElementById('stat-pay-booking').options.length <= 1) {
+                    loadActiveRentalsForStats();
+                }
                 return;
             }
 
@@ -565,6 +654,7 @@ if (!isset($_SESSION['user_id'])) {
                 if (currentView === 'my_listings') action = 'get_my_listings';
                 else if (currentView === 'my_rentals') action = 'get_my_rentals';
                 else if (currentView === 'contracts') action = 'get_contracts';
+                else if (currentView === 'viewings') action = 'get_viewing_appointments';
                 
                 const res = await fetch(`/api/rentals.php?action=${action}`);
                 const data = await res.json();
@@ -580,7 +670,61 @@ if (!isset($_SESSION['user_id'])) {
             const container = document.getElementById('list-container');
             container.innerHTML = '';
             
-            if (items.length === 0) {
+            if (currentView === 'viewings') {
+                let html = '';
+                // Owner Section
+                if (items.owner && items.owner.length > 0) {
+                    html += '<h4 style="margin-bottom:10px; color:#0866ff;">Khách muốn xem phòng của bạn</h4>';
+                    items.owner.forEach(item => {
+                        const date = new Date(item.appointment_time).toLocaleString('vi-VN');
+                        const statusBadge = getStatusBadge(item.status);
+                        html += `
+                            <div class="listing-card" onclick='selectViewing(${JSON.stringify(item)}, "owner")'>
+                                <div class="listing-header">
+                                    <div class="listing-title">${item.title}</div>
+                                    ${statusBadge}
+                                </div>
+                                <div style="font-size:0.9rem; margin-top:5px;">
+                                    <i class="fa-regular fa-clock"></i> ${date}
+                                </div>
+                                <div class="tenant-info">
+                                    <i class="fa-solid fa-user"></i> ${item.tenant_name} (${item.tenant_phone})
+                                </div>
+                            </div>
+                        `;
+                    });
+                     html += '<hr style="margin:20px 0;">';
+                }
+
+                // Tenant Section
+                if (items.tenant && items.tenant.length > 0) {
+                     html += '<h4 style="margin-bottom:10px; color:#0866ff;">Lịch hẹn của bạn</h4>';
+                     items.tenant.forEach(item => {
+                        const date = new Date(item.appointment_time).toLocaleString('vi-VN');
+                        const statusBadge = getStatusBadge(item.status);
+                        html += `
+                            <div class="listing-card" onclick='selectViewing(${JSON.stringify(item)}, "tenant")'>
+                                <div class="listing-header">
+                                    <div class="listing-title">${item.title}</div>
+                                    ${statusBadge}
+                                </div>
+                                <div style="font-size:0.9rem; margin-top:5px;">
+                                    <i class="fa-regular fa-clock"></i> ${date}
+                                </div>
+                                <div class="tenant-info">
+                                    <i class="fa-solid fa-house-user"></i> Chủ nhà: ${item.owner_name}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                if (!html) html = '<p>Chưa có lịch hẹn.</p>';
+                container.innerHTML = html;
+                return;
+            }
+
+            if (!Array.isArray(items) || items.length === 0) {
                 container.innerHTML = '<p>Không có dữ liệu.</p>';
                 return;
             }
@@ -667,12 +811,25 @@ if (!isset($_SESSION['user_id'])) {
                 document.getElementById('edit-id').value = item.id;
                 document.getElementById('edit-title').value = item.title;
                 document.getElementById('edit-price').value = item.price;
+                document.getElementById('edit-area').value = item.area || '';
                 document.getElementById('edit-type').value = item.room_type;
                 document.getElementById('edit-address').value = item.address;
                 document.getElementById('edit-district').value = item.district;
                 document.getElementById('edit-city').value = item.city;
                 document.getElementById('edit-status').value = item.status;
+                document.getElementById('edit-status').value = item.status;
                 document.getElementById('edit-desc').value = item.description;
+
+                // Show/Hide Confirmed Tenant Section (Merged from duplicate block)
+                const confirmedUI = document.getElementById('confirmed-tenant-ui');
+                if (item.booking_status === 'confirmed') {
+                    confirmedUI.style.display = 'block';
+                    document.getElementById('conf-name').innerText = item.tenant_name || 'Không có tên';
+                    document.getElementById('conf-phone').innerText = item.tenant_phone || 'N/A';
+                    document.getElementById('conf-email').innerText = item.tenant_email || 'N/A';
+                } else {
+                    confirmedUI.style.display = 'none';
+                }
 
             } else if (currentView === 'my_rentals') {
                 const view = document.getElementById('rental-details');
@@ -681,6 +838,7 @@ if (!isset($_SESSION['user_id'])) {
                 let content = `
                     <p><strong>Tiêu đề:</strong> ${item.title}</p>
                     <p><strong>Giá thuê:</strong> ${parseInt(item.price).toLocaleString()} đ/tháng</p>
+                    <p><strong>Diện tích:</strong> ${item.area ? item.area + ' m²' : 'N/A'}</p>
                     <p><strong>Địa chỉ:</strong> ${item.address}, ${item.district}, ${item.city}</p>
                     <hr>
                 `;
@@ -704,8 +862,6 @@ if (!isset($_SESSION['user_id'])) {
                 
                 document.getElementById('rental-info-content').innerHTML = content;
                 document.getElementById('rental-actions').innerHTML = actions;
-                document.getElementById('rental-info-content').innerHTML = content;
-                document.getElementById('rental-actions').innerHTML = actions;
 
             } else if (currentView === 'contracts') {
                  const view = document.getElementById('contract-view');
@@ -724,12 +880,6 @@ if (!isset($_SESSION['user_id'])) {
                  
                  if (!item.contract_id) {
                      // No contract -> Create
-                     // Only owner can create? The API allows owner.
-                     // We need to know if current user is owner.
-                     // The item has both names. But we can infer from session?
-                     // Actually, allow button, backend verifies permission.
-                     // But strictly, only owner creates.
-                     // Let's assume Owner for "Create".
                      btns = `<button class="btn btn-primary" onclick="openCreateContract(${item.booking_id})">Làm hợp đồng</button>`;
                  } else {
                      // Has contract -> View / Delete
@@ -742,21 +892,103 @@ if (!isset($_SESSION['user_id'])) {
                  document.getElementById('contract-info-content').innerHTML = html;
                  document.getElementById('contract-actions-container').innerHTML = btns;
 
-            } else if (currentView === 'my_listings') {
-                const form = document.getElementById('listing-editor');
-                 // Check if we need to add "Stop Renting" button
-                 // We can inject it dynamically or toggle visibility
-                // Show/Hide Confirmed Tenant Section
-                const confirmedUI = document.getElementById('confirmed-tenant-ui');
-                if (item.booking_status === 'confirmed') {
-                    confirmedUI.style.display = 'block';
-                    document.getElementById('conf-name').innerText = item.tenant_name || 'Không có tên';
-                    document.getElementById('conf-phone').innerText = item.tenant_phone || 'N/A';
-                    document.getElementById('conf-email').innerText = item.tenant_email || 'N/A';
-                } else {
-                    confirmedUI.style.display = 'none';
+
+
+
+            }
+        }
+
+        function selectViewing(item, role) {
+            resetRightColumn();
+            document.querySelector('.empty-state').style.display = 'none';
+            document.getElementById('viewing-details').classList.add('active');
+            
+            const date = new Date(item.appointment_time).toLocaleString('vi-VN');
+            let content = `
+                <p><strong>Phòng:</strong> ${item.title}</p>
+                <p><strong>Địa chỉ:</strong> ${item.address}</p>
+                <p><strong>Thời gian:</strong> ${date}</p>
+                <p><strong>Trạng thái:</strong> ${item.status.toUpperCase()}</p>
+                <hr>
+            `;
+
+            if (role === 'owner') {
+                content += `
+                    <p><strong>Người xem:</strong> ${item.tenant_name}</p>
+                    <p><strong>SĐT:</strong> <a href="tel:${item.tenant_phone}">${item.tenant_phone}</a></p>
+                    <br>
+                `;
+                if (item.status === 'pending') {
+                    content += `
+                        <button class="btn btn-success" onclick="updateViewingStatus(${item.id}, 'confirmed')">Xác nhận</button>
+                        <button class="btn btn-danger" onclick="updateViewingStatus(${item.id}, 'cancelled')">Từ chối</button>
+                    `;
+                } else if (item.status === 'confirmed') {
+                     content += `
+                        <button class="btn btn-primary" onclick="updateViewingStatus(${item.id}, 'completed')">Đã xem xong</button>
+                        <button class="btn btn-danger" onclick="updateViewingStatus(${item.id}, 'cancelled')">Hủy lịch</button>
+                    `;
+                } else if (item.status === 'completed' || item.status === 'cancelled') {
+                     content += `
+                        <button class="btn btn-danger" onclick="deleteViewing(${item.id})">Xóa lịch sử này</button>
+                    `;
+                }
+            } else {
+                content += `
+                    <p><strong>Chủ nhà:</strong> ${item.owner_name}</p>
+                    <p><strong>Liên hệ:</strong> <a href="tel:${item.owner_phone}">${item.owner_phone}</a></p>
+                    <br>
+                `;
+                if (item.status === 'pending' || item.status === 'confirmed') {
+                     content += `
+                        <button class="btn btn-danger" onclick="updateViewingStatus(${item.id}, 'cancelled')">Hủy lịch hẹn</button>
+                    `;
+                } else if (item.status === 'completed' || item.status === 'cancelled') {
+                     content += `
+                        <button class="btn btn-danger" onclick="deleteViewing(${item.id})">Xóa lịch sử này</button>
+                    `;
                 }
             }
+            
+            document.getElementById('viewing-info-content').innerHTML = content;
+        }
+
+        async function updateViewingStatus(id, status) {
+            if (!confirm('Xác nhận thay đổi trạng thái?')) return;
+            try {
+                const res = await fetch('/api/rentals.php?action=update_viewing_status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: id, status: status})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Cập nhật thành công!');
+                    resetRightColumn();
+                    loadData();
+                } else {
+                    alert('Lỗi: ' + (result.error || 'Unknown'));
+                }
+            } catch (e) { alert('Lỗi kết nối'); }
+        }
+
+        async function deleteViewing(id) {
+            if (!confirm('Bạn có chắc chắn muốn xóa lịch sử xem phòng này?')) return;
+            try {
+                const res = await fetch('/api/rentals.php?action=delete_viewing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: id})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Đã xóa!');
+                    resetRightColumn();
+                    loadData();
+                } else {
+                    alert('Lỗi: ' + (result.error || 'Unknown'));
+                }
+            } catch (e) { alert('Lỗi kết nối'); }
         }
 
         async function updateListing() {
@@ -766,6 +998,7 @@ if (!isset($_SESSION['user_id'])) {
                 id: document.getElementById('edit-id').value,
                 title: document.getElementById('edit-title').value,
                 price: document.getElementById('edit-price').value,
+                area: document.getElementById('edit-area').value,
                 room_type: document.getElementById('edit-type').value,
                 address: document.getElementById('edit-address').value,
                 district: document.getElementById('edit-district').value,
@@ -1203,6 +1436,131 @@ Bên thuê: ....................................................`;
                     alert('Lỗi: ' + (result.error || 'Unknown'));
                 }
             } catch(e) { alert('Lỗi kết nối'); }
+        }
+        function getStatusBadge(status) {
+             if(status === 'pending') return '<span style="color:orange; font-weight:bold;">Chờ xác nhận</span>';
+             else if(status === 'confirmed') return '<span style="color:green; font-weight:bold;">Đã xác nhận</span>';
+             else if(status === 'cancelled') return '<span style="color:red; font-weight:bold;">Đã hủy</span>';
+             else if(status === 'completed') return '<span style="color:blue; font-weight:bold;">Đã hoàn thành</span>';
+             return '<span style="color:grey; font-weight:bold;">' + status + '</span>';
+        }
+        let revenueChart = null;
+
+        async function loadStats() {
+            const year = document.getElementById('stats-year').value;
+            const month = document.getElementById('stats-month').value;
+            
+            try {
+                const res = await fetch(`/api/rentals.php?action=get_payment_stats&year=${year}&month=${month}`);
+                const data = await res.json();
+                
+                const canvas = document.getElementById('revenueChart');
+                if (!canvas) return; 
+                const ctx = canvas.getContext('2d');
+                
+                if (revenueChart) revenueChart.destroy();
+                
+                // If month is 0 (All year), we expect data keys 1-12
+                // If month > 0, we expect data key 'month'
+                
+                let labels, values;
+                if (month > 0) {
+                     labels = [`Tháng ${month}`];
+                     values = [data[month] || 0];
+                } else {
+                     labels = Array.from({length: 12}, (_, i) => `Tháng ${i+1}`);
+                     // Ensure data is array or object keyed by 1-12. API returns {1: val, 2: val...}
+                     values = [];
+                     for(let i=1; i<=12; i++) values.push(data[i] || 0);
+                }
+
+                revenueChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Doanh thu (VNĐ)',
+                            data: values,
+                            backgroundColor: '#0866ff',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadActiveRentalsForStats() {
+            try {
+                const res = await fetch('/api/rentals.php?action=get_active_rentals_for_stats');
+                const rentals = await res.json();
+                const select = document.getElementById('stat-pay-booking');
+                select.innerHTML = '<option value="">-- Chọn phòng --</option>';
+                if (Array.isArray(rentals)) {
+                    rentals.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.booking_id;
+                        opt.text = r.title;
+                        opt.dataset.tenant = r.tenant_name;
+                        opt.dataset.price = r.price;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function onBookingSelect(select) {
+            const opt = select.options[select.selectedIndex];
+            if (opt.value) {
+                document.getElementById('stat-pay-tenant').value = opt.dataset.tenant || '';
+                document.getElementById('stat-pay-price').value = parseInt(opt.dataset.price).toLocaleString() + ' đ';
+                document.getElementById('stat-pay-amount').value = opt.dataset.price;
+            } else {
+                document.getElementById('stat-pay-tenant').value = '';
+                document.getElementById('stat-pay-price').value = '';
+                document.getElementById('stat-pay-amount').value = '';
+            }
+        }
+
+        async function submitStatsPayment(e) {
+            e.preventDefault();
+            const bookingId = document.getElementById('stat-pay-booking').value;
+            const amount = document.getElementById('stat-pay-amount').value;
+            const date = document.getElementById('stat-pay-date').value;
+            const forMonth = document.getElementById('stat-pay-for-month').value;
+            const note = document.getElementById('stat-pay-note').value;
+            if (!bookingId) {
+                alert('Vui lòng chọn phòng!');
+                return;
+            }
+            try {
+                const res = await fetch('/api/rentals.php?action=add_payment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ booking_id: bookingId, amount: amount, date: date, payment_for_month: forMonth, note: note })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Đã lưu thông tin thanh toán!');
+                    loadStats(); 
+                    document.getElementById('stat-pay-booking').value = '';
+                    onBookingSelect(document.getElementById('stat-pay-booking'));
+                    document.getElementById('stat-pay-note').value = '';
+                } else {
+                    alert('Lỗi: ' + (result.error || result.message));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Có lỗi xảy ra.');
+            }
         }
     </script>
 </body>
