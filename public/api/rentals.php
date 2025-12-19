@@ -195,7 +195,7 @@ try {
                 $data['district'],
                 $data['room_type'],
                 $data['status'],
-                $data['area'] ?? null,
+                !empty($data['area']) ? $data['area'] : null,
                 $listingId
             ]);
             

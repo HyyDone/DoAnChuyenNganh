@@ -1,5 +1,5 @@
-CREATE DATABASE QuanLyNhaTro CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; 
-USE QuanLyNhaTro;
+/*CREATE DATABASE QuanLyNhaTro CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;*/
+/*USE QuanLyNhaTro;*/
 
 DROP TABLE IF EXISTS ai_conversations;
 DROP TABLE IF EXISTS reports;

@@ -4,67 +4,112 @@ require_once __DIR__ . '/../../helpers/upload.php';
 require_once __DIR__ . '/../../helpers/CityNormalizer.php';
 
 session_start();
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
-ob_start();
+// [DEBUG] Disable on-screen error reporting to prevent JSON corruption
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
 
-header('Content-Type: application/json');
+// Increase script execution time to handle slow AI responses
+set_time_limit(120);
 
-$userId = $_SESSION['user_id'] ?? null;
-
-$uploadedImagePaths = [];
-
-if (!empty($_FILES['image']) && !empty($_FILES['image']['name'])) {
-    $targetDir = __DIR__ . '/../../public/uploads/ai_generated/';
-    if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
-    $uploadResult = upload_avatar($_FILES['image'], $targetDir);
-    if (isset($uploadResult['path'])) {
-        $uploadedImagePaths[] = str_replace('uploads/avatars/', 'uploads/ai_generated/', $uploadResult['path']);
-    }
+// [DEBUG] Custom Logger
+function debug_log($message) {
+    $logFile = __DIR__ . '/../../debug_ai_chat.log';
+    $time = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$time] $message" . PHP_EOL, FILE_APPEND);
 }
 
-if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
-    $targetDir = __DIR__ . '/../../public/uploads/ai_generated/';
-    if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
-    
-    $count = count($_FILES['images']['name']);
-    for ($i = 0; $i < $count; $i++) {
-        if ($_FILES['images']['error'][$i] === UPLOAD_ERR_OK) {
-             $tmpFile = [
-                'name' => $_FILES['images']['name'][$i],
-                'type' => $_FILES['images']['type'][$i],
-                'tmp_name' => $_FILES['images']['tmp_name'][$i],
-                'error' => $_FILES['images']['error'][$i],
-                'size' => $_FILES['images']['size'][$i]
-            ];
-            $uploadResult = upload_avatar($tmpFile, $targetDir);
-            if (isset($uploadResult['path'])) {
-                 $uploadedImagePaths[] = str_replace('uploads/avatars/', 'uploads/ai_generated/', $uploadResult['path']);
-            }
+// [DEBUG] Catch fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_COMPILE_ERROR)) {
+        debug_log("FATAL ERROR: " . print_r($error, true));
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Internal Server Error (Check logs)']);
         }
     }
-}
+});
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = [];
-    $message = '';
-    $history = [];
+try {
+    ob_start();
+    
+    header('Content-Type: application/json');
+    debug_log("Request received via " . $_SERVER['REQUEST_METHOD']);
 
-    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    $userId = $_SESSION['user_id'] ?? null;
+    $uploadedImagePaths = [];
 
-    if (strpos($contentType, 'application/json') !== false) {
-        $input = json_decode(file_get_contents('php://input'), true);
-        $message = trim($input['message'] ?? '');
-        $history = $input['history'] ?? [];
+    // Process Image Uploads
+    if (!empty($_FILES['images'])) {
+        debug_log("FILES['images'] detected: " . print_r($_FILES['images'], true));
+        
+        $targetDir = __DIR__ . '/../../public/uploads/ai_generated/';
+        if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+
+        // Check if multiple files are uploaded (standard for 'images[]')
+        if (is_array($_FILES['images']['name'])) {
+            $count = count($_FILES['images']['name']);
+            for ($i = 0; $i < $count; $i++) {
+                if ($_FILES['images']['error'][$i] === 0) {
+                    $fileData = [
+                        'name' => $_FILES['images']['name'][$i],
+                        'type' => $_FILES['images']['type'][$i],
+                        'tmp_name' => $_FILES['images']['tmp_name'][$i],
+                        'error' => $_FILES['images']['error'][$i],
+                        'size' => $_FILES['images']['size'][$i]
+                    ];
+                    $uploadResult = upload_avatar($fileData, $targetDir);
+                    if (isset($uploadResult['path'])) {
+                        $uploadedImagePaths[] = str_replace('uploads/avatars/', 'uploads/ai_generated/', $uploadResult['path']);
+                        debug_log("Image uploaded: " . end($uploadedImagePaths));
+                    } else {
+                        debug_log("Upload failed for file $i: " . ($uploadResult['error'] ?? 'Unknown error'));
+                    }
+                } else {
+                    debug_log("File upload error code for file $i: " . $_FILES['images']['error'][$i]);
+                }
+            }
+        } else {
+            // Fallback for single file if somehow not array
+            $uploadResult = upload_avatar($_FILES['images'], $targetDir);
+            if (isset($uploadResult['path'])) {
+                $uploadedImagePaths[] = str_replace('uploads/avatars/', 'uploads/ai_generated/', $uploadResult['path']);
+                debug_log("Single image uploaded: " . end($uploadedImagePaths));
+            } else {
+                debug_log("Single upload failed: " . ($uploadResult['error'] ?? 'Unknown error'));
+            }
+        }
     } else {
-        $message = trim($_POST['message'] ?? '');
-        $history = isset($_POST['history']) ? json_decode($_POST['history'], true) : [];
+        debug_log("No FILES['images'] found.");
     }
+    
+    // ... (rest of mulitple image upload logic)
 
-    if (empty($message) && empty($uploadedImagePaths)) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Vui lòng nhập tin nhắn hoặc gửi ảnh.']);
-        exit;
-    }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = [];
+        $message = '';
+        $history = [];
+    
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    
+        if (strpos($contentType, 'application/json') !== false) {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $message = trim($input['message'] ?? '');
+            $history = $input['history'] ?? [];
+        } else {
+            $message = trim($_POST['message'] ?? '');
+            $history = isset($_POST['history']) ? json_decode($_POST['history'], true) : [];
+        }
+        
+        debug_log("User Message: " . $message);
+
+        if (empty($message) && empty($uploadedImagePaths)) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập tin nhắn hoặc gửi ảnh.']);
+            exit;
+        }
+
 
     $listingsContext = getListingsContext($pdo);
 
@@ -80,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $systemPrompt = constructSystemPrompt($listingsContext, $uploadedImagePaths);
+    debug_log("SYSTEM PROMPT: " . $systemPrompt);
 
     $aiResponse = callOllama($message, $history, $systemPrompt);
 
@@ -92,6 +138,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'action_performed' => $actionResult['type'] ?? null
     ]);
     exit;
+    }
+
+} catch (Throwable $e) {
+    debug_log("EXCEPTION: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    if (!headers_sent()) {
+         ob_clean();
+         echo json_encode(['success' => false, 'message' => 'Internal Server Error (See logs)']);
+    }
 }
 
 function getListingsContext($pdo) {
@@ -120,14 +174,14 @@ function constructSystemPrompt($listingsData, $imagePaths) {
 
     $base .= "QUY TẮC ƯU TIÊN:\n";
     $base .= " - GREETING luôn ưu tiên cao nhất.\n";
+    $base .= " - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.\n";
     $base .= " - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.\n";
-    $base .= " - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.\n";
     $base .= " - Không được tự suy diễn hành động.\n\n";
 
     $base .= "CHỐNG BỊA ĐẶT:\n";
     $base .= " - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.\n";
     $base .= " - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.\n";
-    $base .= " - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.\n\n";
+    $base .= " - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.\n\n";
 
     $base .= "NGÔN NGỮ & GIỌNG ĐIỆU:\n";
     $base .= " - Luôn trả lời bằng tiếng Việt.\n";
@@ -138,26 +192,23 @@ function constructSystemPrompt($listingsData, $imagePaths) {
     $base .= "   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: \"Xin chào, bạn muốn tôi giúp gì?\"\n";
     $base .= "   - Trả lời bằng text thông thường, KHÔNG dùng JSON.\n\n";
 
-    $base .= "2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):\n";
-    $base .= "   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').\n";
-    $base .= "   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.\n";
-    $base .= "   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).\n\n";
-    $base .= "   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.\n";
-    $base .= "   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.\n";
-    $base .= "   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.\n";
-    $base .= "   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.\n";
-    $base .= "   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:\n";
-    $base .= "     \"Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?\"\n\n";
-    $base .= "   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.\n";
+    $base .= "2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):\n";
+    $base .= "   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.\n";
+    $base .= "   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.\n";
+    $base .= "   - JSON: {\"action\": \"search\", \"city\": \"Tên thành phố (nếu có)\", \"price_max\": \"Giá tối đa (số)\", \"query\": \"Yêu cầu khác (quận, tên đường...)\"}\n";
+    $base .= "   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {\"action\": \"search\", \"city\": \"Hà Nội\", \"price_max\": 3000000}\n";
+    $base .= "   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {\"action\": \"search\", \"query\": \"Quận 1\"}\n";
+    $base .= "   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {\"action\": \"search\", \"query\": \"Bình Quới\", \"price_max\": 7000000}\n\n";
 
     $base .= "3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):\n";
     $base .= "   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.\n";
     $base .= "   - JSON: {\"action\": \"create_post\", ...}\n\n";
 
     $base .= "4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):\n";
-    $base .= "   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').\n";
-    $base .= "   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.\n";
-    $base .= "   - JSON: {\"action\": \"create_listing\", ...}\n\n";
+    $base .= "   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ.\n";
+    $base .= "   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.\n";
+    $base .= "   - JSON: {\"action\": \"create_listing\", \"title\": \"...\", \"price\": 123, \"area\": 20, \"city\": \"...\", \"district\": \"...\", \"address\": \"...\", \"room_type\": \"...\", \"description\": \"...\"}\n";
+    $base .= "   - Nếu thiếu thông tin, JSON vẫn phải được tạo với các trường rỗng hoặc giá trị mặc định để hệ thống xử lý.\n\n";
     
     if (empty($imagePaths)) {
         $base .= "LƯU Ý QUAN TRỌNG VỀ ẢNH:\n";
@@ -194,7 +245,7 @@ function callOllama($message, $history, $systemPrompt) {
         'model' => 'qwen2.5:3b',
         'messages' => $messages,
         'stream' => false,
-        'format' => 'json', 
+        // 'format' => 'json', // [MODIFIED] Disabled to allow plain text responses for greeting/consultation
         'options' => ['temperature' => 0.5]
     ];
 
@@ -226,35 +277,32 @@ function sendHttpRequest($url, $method, $data = []) {
     ];
     
     $context  = stream_context_create($opts);
-    $result = @file_get_contents($url, false, $context);
     
-    if ($result === FALSE) {
+    // Use fopen instead of file_get_contents to avoid $http_response_header deprecation
+    $stream = @fopen($url, 'r', false, $context);
+    
+    if ($stream === false) {
         $error = error_get_last();
-        return ['success' => false, 'error' => $error['message'] ?? 'Connection faied'];
+        return ['success' => false, 'error' => $error['message'] ?? 'Connection failed'];
     }
+
+    $meta = stream_get_meta_data($stream);
+    $headers = $meta['wrapper_data'] ?? [];
+    $body = stream_get_contents($stream);
+    fclose($stream);
     
-    $statusLine = '';
-    if (function_exists('http_get_last_response_headers')) {
-        $headers = http_get_last_response_headers();
-        if ($headers && isset($headers[0])) {
-            $statusLine = $headers[0];
-        }
-    } else {
-        if (isset($http_response_header)) {
-            $statusLine = $http_response_header[0];
-        }
-    }
+    $statusLine = $headers[0] ?? '';
 
     if ($statusLine) {
         preg_match('{HTTP\/\S*\s(\d{3})}', $statusLine, $match);
         $status = $match[1] ?? 500;
         
         if ($status >= 400) {
-            return ['success' => false, 'error' => "HTTP $status: " . $result];
+            return ['success' => false, 'error' => "HTTP $status: " . $body];
         }
     }
     
-    return ['success' => true, 'data' => $result];
+    return ['success' => true, 'data' => $body];
 }
 
 function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessage) {
@@ -263,7 +311,14 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
     
     if ($jsonStart !== false && $jsonEnd !== false) {
         $jsonStr = substr($aiResponseText, $jsonStart, $jsonEnd - $jsonStart + 1);
+        debug_log("JSON EXTRACTED: " . $jsonStr);
+        
         $actionData = json_decode($jsonStr, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            debug_log("JSON DECODE ERROR: " . json_last_error_msg());
+        } else {
+            debug_log("ACTION DATA: " . print_r($actionData, true));
+        }
 
         if ($actionData && isset($actionData['action'])) {
             $msgLower = strtolower($userMessage);
@@ -280,117 +335,89 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                 strpos($msgLower, 'post') !== false
             );
 
-            if ($actionData['action'] === 'create_listing' && $isSearchIntent && !$isPostIntent) {
-                $title = $actionData['title'] ?? 'Phòng trọ';
-                $price = $actionData['price'] ?? 0;
-                $addr = $actionData['address'] ?? '';
-                $desc = $actionData['description'] ?? '';
-
-                if (
-                    (empty($addr) || $addr === 'Chưa cập nhật') && 
-                    (stripos($title, 'Phòng trọ') !== false || empty($title)) &&
-                    (empty($price) || $price == 0 || stripos($price, 'Thỏa thuận') !== false)
-                ) {
-                     return [
-                        'response' => "Hiện tôi chưa tìm thấy thông tin phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
-                    ];
-                }
-
-                $priceStr = is_numeric($price) ? number_format($price) . ' VND' : $price;
-                
-                $responseMsg = "Tôi tìm thấy thông tin phù hợp với yêu cầu của bạn:\n";
-                $responseMsg .= "- **$title**\n";
-                $responseMsg .= "- Giá: $priceStr\n";
-                if ($addr) $responseMsg .= "- Địa chỉ: $addr\n";
-                if ($desc) $responseMsg .= "- Mô tả: $desc";
-                
-                return ['response' => $responseMsg];
-            }
-            
-            if ($actionData['action'] === 'create_post' && $isSearchIntent && !$isPostIntent) {
-                 return [
-                    'response' => "Hiện tôi chưa tìm thấy thông tin phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
-                ];
+            // [MODIFIED] If intent is search but AI thinks it's create_listing/post -> Force strict Consultation
+            if (($actionData['action'] === 'create_listing' || $actionData['action'] === 'create_post') && $isSearchIntent && !$isPostIntent) {
+                $actionData['action'] = 'consultation';
             }
 
             if ($actionData['action'] === 'create_post') {
                 return executeCreatePost($pdo, $userId, $actionData, $imagePaths);
             } elseif ($actionData['action'] === 'create_listing') {
                 return executeCreateListing($pdo, $userId, $actionData, $imagePaths);
-            } elseif ($actionData['action'] === 'consultation') {
+            } elseif ($actionData['action'] === 'search' || $actionData['action'] === 'consultation') {
+                
+                $city = null;
+                $priceMax = null;
+                $queryText = "";
 
-                $msg = mb_strtolower(trim($userMessage));
-
-                $isSearch = (
-                    str_contains($msg, 'tìm') ||
-                    str_contains($msg, 'thuê') ||
-                    str_contains($msg, 'phòng') ||
-                    str_contains($msg, 'trọ')
-                );
-
-                if ($isSearch) {
-                    $city = null;
-
-                    if (!empty($actionData['city'])) {
-                        $city = CityNormalizer::normalize($actionData['city']);
-                    }
-
-                    if (!$city) {
-                        if (preg_match('/h(à|a)\s*n(ộ|o)i/', $msg)) {
-                            $city = 'Ha Noi';
-                        } elseif (
-                            preg_match('/h(ồ|o)\s*ch(í|i)\s*minh/', $msg) ||
-                            preg_match('/\bhcm\b/', $msg)
-                        ) {
-                            $city = 'Ho Chi Minh';
-                        }
-                    }
-
-
-                    if ($city) {
-                        $stmt = $pdo->prepare("
-                            SELECT id, title, price, address
-                            FROM listings
-                            WHERE city = ? AND status = 'available'
-                            ORDER BY created_at DESC
-                            LIMIT 5
-                        ");
-                        $stmt->execute([$city]);
-                        $listings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                        if ($listings) {
-                            $reply = "🏠 **Tôi tìm thấy một số phòng tại {$city}:**\n\n";
-
-                            foreach ($listings as $l) {
-                                $reply .= "• **{$l['title']}**\n";
-                                $reply .= "  💰 " . number_format($l['price']) . " VND\n";
-                                $reply .= "  📍 {$l['address']}\n";
-                                $reply .= "  🔗 listing_detail.php?id={$l['id']}\n\n";
-                            }
-
-                            return ['response' => $reply];
-                        }
-
-                        return [
-                            'response' => "😔 Hiện chưa có phòng trọ nào tại **{$city}**. Bạn muốn tìm khu vực khác không?"
-                        ];
-                    }
-
-                    return [
-                        'response' => "📍 Bạn muốn tìm phòng ở **thành phố nào**? (Hà Nội / TP.HCM / Đà Nẵng)"
-                    ];
+                if (!empty($actionData['city'])) {
+                    $city = CityNormalizer::normalize($actionData['city']);
+                }
+                
+                if (!empty($actionData['price_max'])) {
+                    $priceMax = intval(str_replace(['.', ','], '', $actionData['price_max']));
                 }
 
-                $text = $actionData['description'] ?? $actionData['message'] ?? null;
-
-                if ($text && trim($text) !== '') {
-                    return ['response' => $text];
+                if (!empty($actionData['query'])) {
+                    $queryText = $actionData['query'];
                 }
+
+                // Fallback: Parse from message if JSON is empty but intent is clear
+                if (!$city && !$priceMax && !$queryText) {
+                     $msg = function_exists('mb_strtolower') ? mb_strtolower($userMessage) : strtolower($userMessage);
+                     if (strpos($msg, 'hà nội') !== false || strpos($msg, 'hn') !== false) $city = 'Ha Noi';
+                     elseif (strpos($msg, 'hồ chí minh') !== false || strpos($msg, 'hcm') !== false) $city = 'Ho Chi Minh';
+                     elseif (strpos($msg, 'đà nẵng') !== false || strpos($msg, 'đn') !== false) $city = 'Da Nang';
+                     
+                     if (preg_match('/(\d+)\s*(triệu|tr)/i', $msg, $m)) {
+                         $priceMax = floatval($m[1]) * 1000000;
+                     }
+                }
+
+                $sql = "SELECT id, title, price, address, city FROM listings WHERE status = 'available' ";
+                $params = [];
+
+                if ($city) {
+                    $sql .= " AND city LIKE ? "; // Changed to LIKE for better flexibility
+                    $params[] = "%$city%";
+                }
+                
+                if ($priceMax) {
+                    $sql .= " AND price <= ? ";
+                    $params[] = $priceMax;
+                }
+
+                if ($queryText) {
+                    $sql .= " AND (title LIKE ? OR address LIKE ? OR description LIKE ?) ";
+                    $searchTerm = "%$queryText%";
+                    $params[] = $searchTerm;
+                    $params[] = $searchTerm;
+                    $params[] = $searchTerm;
+                }
+                
+                $sql .= " ORDER BY created_at DESC LIMIT 5";
+                
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                $listings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if ($listings) {
+                    $reply = "🔍 **Kết quả tìm kiếm" . ($city ? " tại $city" : "") . ":**\n\n";
+                    foreach ($listings as $l) {
+                        $reply .= "🏠 **{$l['title']}**\n";
+                        $reply .= "💰 " . number_format($l['price']) . " VND\n";
+                        // $reply .= "📍 {$l['address']}\n";
+                        $reply .= "👉 [Xem chi tiết](listing_detail.php?id={$l['id']})\n\n";
+                    }
+                    return ['response' => $reply];
+                } else {
+                     return ['response' => "😞 Không tìm thấy phòng nào phù hợp" . ($city ? " tại $city" : "") . ($priceMax ? " với giá dưới " . number_format($priceMax) : "") . "."];
+                }
+            }
 
                 return [
                     'response' => 'Hiện tôi chưa tìm thấy thông tin phù hợp. Bạn có thể nói rõ hơn nhu cầu của mình không?'
                 ];
-            }
         }
     }
 
@@ -404,7 +431,7 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
 function executeCreatePost($pdo, $userId, $data, $imagePaths) {
     if (!$userId) return ['response' => 'Vui lòng đăng nhập để đăng bài.'];
     
-    $caption = $data['caption'] ?? 'Bài viết mới';
+    $caption = $data['caption'] ?? $data['content'] ?? 'Bài viết mới';
     $caption = preg_replace('/\[(Hình ảnh|Image)\s*\d+\]/ui', '', $caption);
     $caption = trim($caption);
 
@@ -459,6 +486,9 @@ function executeCreateListing($pdo, $userId, $data, $imagePaths) {
     $addr = preg_replace('/(,\s*)?(?:\bThành phố|\bTP)?\s*(?:\bHà Nội|\bHa Noi|\bHồ Chí Minh|\bHo Chi Minh|\bĐà Nẵng|\bDa Nang)\s*$/iu', '', $addr);
     $addr = trim($addr, " \t\n\r\0\x0B,");
 
+    $district = $data['district'] ?? '';
+    $area = isset($data['area']) ? floatval($data['area']) : null;
+
     $rawType = strtolower($data['room_type'] ?? '');
     $type = 'private'; // Default
     if (strpos($rawType, 'studio') !== false) {
@@ -468,12 +498,12 @@ function executeCreateListing($pdo, $userId, $data, $imagePaths) {
     } elseif (strpos($rawType, 'private') !== false || strpos($rawType, 'riêng') !== false) {
         $type = 'private';
     }
-    $desc = $data['description'] ?? '';
+    $desc = strip_tags($data['description'] ?? '');
 
     try {
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare("INSERT INTO listings (owner_id, title, price, address, city, room_type, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
-        $stmt->execute([$userId, $title, $price, $addr, $city, $type, $desc]);
+        $stmt = $pdo->prepare("INSERT INTO listings (owner_id, title, price, address, city, district, area, room_type, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available')");
+        $stmt->execute([$userId, $title, $price, $addr, $city, $district, $area, $type, $desc]);
         $listingId = $pdo->lastInsertId();
 
         if (!empty($imagePaths)) {
