@@ -5,10 +5,18 @@ session_start();
 
 $successMsg = '';
 $errorMsg = '';
+$currentUser = null;
+if (isset($_SESSION['user_id'])) {
+    $stmtUser = $pdo->prepare("SELECT is_landlord FROM users WHERE id = ?");
+    $stmtUser->execute([$_SESSION['user_id']]);
+    $currentUser = $stmtUser->fetch();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_appliance') {
     if (!isset($_SESSION['user_id'])) {
         $errorMsg = 'Vui lòng đăng nhập để đăng tin.';
+    } elseif (empty($currentUser['is_landlord'])) {
+        $errorMsg = 'Bạn cần kích hoạt vai trò chủ trọ để đăng tin.';
     } else {
         $name = $_POST['name'] ?? '';
         $type = $_POST['type'] ?? 'Khác';
@@ -99,7 +107,7 @@ try {
             margin: 20px auto;
             padding: 0 15px;
             display: grid;
-            grid-template-columns: 350px 1fr;
+            grid-template-columns: 1fr 350px;
             gap: 24px;
         }
         @media (max-width: 768px) {
@@ -219,70 +227,6 @@ try {
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <div class="container">
-    <aside class="sidebar">
-        <div class="form-card">
-            <h3 class="form-title">Đăng tin cho thuê</h3>
-            
-            <?php if ($successMsg): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($successMsg) ?></div>
-            <?php endif; ?>
-            <?php if ($errorMsg): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($errorMsg) ?></div>
-            <?php endif; ?>
-
-            <form method="POST" action="" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="create_appliance">
-                
-                <div class="form-group">
-                    <label class="form-label">Tên đồ gia dụng</label>
-                    <input type="text" name="name" class="form-input" placeholder="VD: Máy giặt LG..." required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Hình ảnh</label>
-                    <input type="file" name="image" class="form-input" accept="image/*">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Khu vực</label>
-                    <select name="city" class="form-select">
-                        <option value="Ho Chi Minh">Hồ Chí Minh</option>
-                        <option value="Ha Noi">Hà Nội</option>
-                        <option value="Da Nang">Đà Nẵng</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Loại đồ</label>
-                    <select name="type" class="form-select">
-                        <option value="Tủ lạnh">Tủ lạnh</option>
-                        <option value="Máy giặt">Máy giặt</option>
-                        <option value="Quạt">Quạt</option>
-                        <option value="Bếp Gas">Bếp Gas</option>
-                        <option value="Khác">Khác</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Giá thuê / tháng (VNĐ)</label>
-                    <input type="number" name="price" class="form-input" required min="0">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Số lượng</label>
-                    <input type="number" name="quantity" class="form-input" value="1" required min="1">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Mô tả chi tiết</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
-                </div>
-
-                <button type="submit" class="btn-submit">Đăng tin</button>
-            </form>
-        </div>
-    </aside>
-
     <main class="main-content">
         <div class="filter-bar">
             <span><i class="fa-solid fa-filter"></i> Lọc theo:</span>
@@ -339,6 +283,80 @@ try {
             </div>
         <?php endif; ?>
     </main>
+
+    <aside class="sidebar">
+        <div class="form-card">
+            <h3 class="form-title">Đăng tin cho thuê</h3>
+            
+            <?php if ($successMsg): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($successMsg) ?></div>
+            <?php endif; ?>
+            <?php if ($errorMsg): ?>
+                <div class="alert alert-error"><?= htmlspecialchars($errorMsg) ?></div>
+            <?php endif; ?>
+
+                <?php if ($currentUser && !empty($currentUser['is_landlord'])): ?>
+                <form method="POST" action="" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="create_appliance">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tên đồ gia dụng</label>
+                        <input type="text" name="name" class="form-input" placeholder="VD: Máy giặt LG..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Hình ảnh</label>
+                        <input type="file" name="image" class="form-input" accept="image/*">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Khu vực</label>
+                        <select name="city" class="form-select">
+                            <option value="Ho Chi Minh">Hồ Chí Minh</option>
+                            <option value="Ha Noi">Hà Nội</option>
+                            <option value="Da Nang">Đà Nẵng</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Loại đồ</label>
+                        <select name="type" class="form-select">
+                            <option value="Tủ lạnh">Tủ lạnh</option>
+                            <option value="Máy giặt">Máy giặt</option>
+                            <option value="Quạt">Quạt</option>
+                            <option value="Bếp Gas">Bếp Gas</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Giá thuê / tháng (VNĐ)</label>
+                        <input type="number" name="price" class="form-input" required min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Số lượng</label>
+                        <input type="number" name="quantity" class="form-input" value="1" required min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Mô tả chi tiết</label>
+                        <textarea name="description" class="form-textarea" rows="3"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Đăng tin</button>
+                </form>
+                <?php else: ?>
+                <div style="text-align:center; padding:30px 20px; color:#65676b; background:#f7f7f7; border-radius:8px; border:1px dashed #ced0d4;">
+                    <i class="fa-solid fa-user-shield" style="font-size:32px; margin-bottom:15px; color:#ccc;"></i>
+                    <p style="font-size:14px; margin-bottom:20px;">Bạn cần kích hoạt vai trò <b>Chủ trọ</b> để đăng tin.</p>
+                    <a href="/profile.php" style="display:inline-block; padding:10px 20px; background:#e7f3ff; color:#1877f2; text-decoration:none; font-weight:bold; border-radius:6px; transition:0.2s;">
+                        Kích hoạt ngay
+                    </a>
+                </div>
+                <?php endif; ?>
+        </div>
+    </aside>
 </div>
 
 <?php if (file_exists(__DIR__ . '/includes/footer.php')) include __DIR__ . '/includes/footer.php'; ?>

@@ -1,0 +1,2168 @@
+[2025-12-19 07:34:04] Request received via 
+[2025-12-19 07:36:26] Request received via POST
+[2025-12-19 07:36:26] User Message: Xin chao
+[2025-12-19 08:22:52] Request received via POST
+[2025-12-19 08:22:52] User Message: Xin chao
+[2025-12-19 17:19:11] Request received via POST
+[2025-12-19 17:19:11] User Message: Hi
+[2025-12-19 17:19:18] Request received via POST
+[2025-12-19 17:19:18] User Message: Tìm phòng trọ giúp mình
+[2025-12-19 17:19:49] FATAL ERROR: Array
+(
+    [type] => 1
+    [message] => Maximum execution time of 30 seconds exceeded
+    [file] => C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php
+    [line] => 247
+    [trace] => Array
+        (
+            [0] => Array
+                (
+                    [file] => C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php
+                    [line] => 247
+                    [function] => fopen
+                    [args] => Array
+                        (
+                            [0] => http://127.0.0.1:11434/api/chat
+                            [1] => r
+                            [2] => 
+                            [3] => Resource id #5
+                        )
+
+                )
+
+            [1] => Array
+                (
+                    [file] => C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php
+                    [line] => 217
+                    [function] => sendHttpRequest
+                    [args] => Array
+                        (
+                            [0] => http://127.0.0.1:11434/api/chat
+                            [1] => POST
+                            [2] => Array
+                                (
+                                    [model] => qwen2.5:3b
+                                    [messages] => Array
+                                        (
+                                            [0] => Array
+                                                (
+                                                    [role] => system
+                                                    [content] => Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').
+   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.
+   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).
+
+   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.
+   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.
+   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.
+   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.
+   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:
+     "Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
+
+   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+                                                )
+
+                                            [1] => Array
+                                                (
+                                                    [role] => assistant
+                                                    [content] => Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?
+                                                )
+
+                                            [2] => Array
+                                                (
+                                                    [role] => user
+                                                    [content] => Hi
+                                                )
+
+                                            [3] => Array
+                                                (
+                                                    [role] => assistant
+                                                    [content] => Xin chào, bạn muốn tôi giúp gì?
+                                                )
+
+                                            [4] => Array
+                                                (
+                                                    [role] => user
+                                                    [content] => Tìm phòng trọ giúp mình
+                                                )
+
+                                            [5] => Array
+                                                (
+                                                    [role] => user
+                                                    [content] => Tìm phòng trọ giúp mình
+                                                )
+
+                                        )
+
+                                    [stream] => 
+                                    [format] => json
+                                    [options] => Array
+                                        (
+                                            [temperature] => 0.5
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+            [2] => Array
+                (
+                    [file] => C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php
+                    [line] => 92
+                    [function] => callOllama
+                    [args] => Array
+                        (
+                            [0] => Tìm phòng trọ giúp mình
+                            [1] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [sender] => bot
+                                            [text] => Xin chào! Tôi là trợ lý ảo. Bạn cần giúp gì về việc tìm trọ không?
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [sender] => user
+                                            [text] => Hi
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [sender] => bot
+                                            [text] => Xin chào, bạn muốn tôi giúp gì?
+                                        )
+
+                                    [3] => Array
+                                        (
+                                            [sender] => user
+                                            [text] => Tìm phòng trọ giúp mình
+                                        )
+
+                                )
+
+                            [2] => Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').
+   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.
+   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).
+
+   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.
+   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.
+   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.
+   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.
+   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:
+     "Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
+
+   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+                        )
+
+                )
+
+        )
+
+)
+
+[2025-12-19 17:21:58] Request received via POST
+[2025-12-19 17:21:58] User Message: hi
+[2025-12-19 17:22:09] Request received via POST
+[2025-12-19 17:22:09] User Message: Tìm phòng trọ tại Hà Nội giúp mình
+[2025-12-19 17:22:47] Request received via POST
+[2025-12-19 17:22:47] User Message: Một nơi nào đó ở thành phố thôi
+[2025-12-19 17:23:01] Request received via POST
+[2025-12-19 17:23:01] User Message: Ở Hà Nội
+[2025-12-19 17:23:13] Request received via POST
+[2025-12-19 17:23:13] User Message: Gần trường đại học
+[2025-12-19 17:23:35] Request received via POST
+[2025-12-19 17:23:35] User Message: Mức giá mong muốn 5 triệu
+[2025-12-19 17:24:07] Request received via POST
+[2025-12-19 17:24:07] User Message: Tìm giúp mình phòng trọ ở Hà Nội, gần trường đại học giá 5 triệu
+[2025-12-19 17:26:08] Request received via POST
+[2025-12-19 17:26:08] User Message: hi
+[2025-12-19 17:26:10] Request received via POST
+[2025-12-19 17:26:10] User Message: Tìm phòng ở Hà Nội giá 5 triệu
+[2025-12-19 17:26:10] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').
+   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.
+   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).
+
+   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.
+   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.
+   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.
+   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.
+   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:
+     "Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
+
+   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:26:30] Request received via POST
+[2025-12-19 17:26:30] User Message: Cho tôi biết thêm thông tin của phòng này
+[2025-12-19 17:26:30] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').
+   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.
+   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).
+
+   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.
+   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.
+   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.
+   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.
+   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:
+     "Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
+
+   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:27:08] Request received via POST
+[2025-12-19 17:27:08] User Message: Tìm phòng trọ ở Hồ Chí Minh
+[2025-12-19 17:27:08] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').
+   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.
+   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).
+
+   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.
+   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.
+   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.
+   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.
+   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:
+     "Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
+
+   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:27:39] Request received via POST
+[2025-12-19 17:27:39] User Message: Tìm phòng trọ ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:27:39] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. CONSULTATION (Tư vấn/Tìm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM KIẾM, HỎI THUÊ, hoặc TƯ VẤN phòng (ví dụ: 'tư vấn', 'tìm phòng', 'tìm trọ', 'tìm phòng trọ', 'mình muốn thuê', 'có phòng nào ở...').
+   - TRẢ LỜI BẰNG TEXT TỰ NHIÊN. TUYỆT ĐỐI KHÔNG tạo tin đăng.
+   - Cung cấp thông tin phòng và đường dẫn: [Tên phòng](listing_detail.php?id=ID).
+
+   - CHỈ được nói 'tôi tìm thấy phòng' khi có ÍT NHẤT 1 phòng với ID, tên và giá cụ thể.
+   - Mỗi phòng phải có link dạng: listing_detail.php?id=ID.
+   - ID phải là số nguyên tồn tại trong danh sách được cung cấp.
+   - TUYỆT ĐỐI KHÔNG dùng các cụm mơ hồ như: 'Phòng trọ', 'Giá thỏa thuận', 'Thông tin phù hợp'.
+   - Nếu KHÔNG có phòng phù hợp, PHẢI trả lời đúng câu sau và KHÔNG thêm nội dung khác:
+     "Hiện tôi chưa tìm thấy phòng phù hợp với yêu cầu của bạn. Bạn có thể cho tôi biết thêm khu vực hoặc mức giá mong muốn không?"
+
+   - CONSULTATION (tìm phòng) LUÔN trả lời bằng TEXT, KHÔNG BAO GIỜ trả JSON.
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:30:00] Request received via POST
+[2025-12-19 17:30:00] User Message: hi
+[2025-12-19 17:30:02] Request received via POST
+[2025-12-19 17:30:02] User Message: Tìm phòng ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:30:02] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:32:05] Request received via POST
+[2025-12-19 17:32:05] User Message: hi
+[2025-12-19 17:32:08] Request received via POST
+[2025-12-19 17:32:08] User Message: Tìm phòng ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:32:08] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:32:09] JSON EXTRACTED: {"action": "search", "city": "Hồ Chí Minh", "price_max": 2000000}
+[2025-12-19 17:32:09] ACTION DATA: Array
+(
+    [action] => search
+    [city] => Hồ Chí Minh
+    [price_max] => 2000000
+)
+
+[2025-12-19 17:34:30] Request received via POST
+[2025-12-19 17:34:30] User Message: hi
+[2025-12-19 17:34:39] Request received via POST
+[2025-12-19 17:34:39] User Message: Tìm trọ ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:34:39] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:34:40] JSON EXTRACTED: {"action": "search", "city": "Ho Chi Minh City", "price_max": 2000000}
+[2025-12-19 17:34:40] ACTION DATA: Array
+(
+    [action] => search
+    [city] => Ho Chi Minh City
+    [price_max] => 2000000
+)
+
+[2025-12-19 17:34:40] EXCEPTION: Call to undefined function mb_strtolower()
+#0 C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php(317): CityNormalizer::normalize('Ho Chi Minh Cit...')
+#1 C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php(98): handleAiActions(Object(PDO), 1, '{"action": "sea...', Array, 'T\xC3\xACm tr\xE1\xBB\x8D \xE1\xBB\x9F ...')
+#2 {main}
+[2025-12-19 17:35:13] Request received via POST
+[2025-12-19 17:35:13] User Message: hi
+[2025-12-19 17:35:14] Request received via POST
+[2025-12-19 17:35:14] User Message: Tìm phòng ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:35:14] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:35:16] JSON EXTRACTED: {"action": "search", "city": "Ho Chi Minh", "price_max": 2000000}
+[2025-12-19 17:35:16] ACTION DATA: Array
+(
+    [action] => search
+    [city] => Ho Chi Minh
+    [price_max] => 2000000
+)
+
+[2025-12-19 17:35:16] EXCEPTION: Call to undefined function mb_strtolower()
+#0 C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php(317): CityNormalizer::normalize('Ho Chi Minh')
+#1 C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php(98): handleAiActions(Object(PDO), 1, '{"action": "sea...', Array, 'T\xC3\xACm ph\xC3\xB2ng \xE1\xBB\x9F...')
+#2 {main}
+[2025-12-19 17:36:22] Request received via POST
+[2025-12-19 17:36:22] User Message: hi
+[2025-12-19 17:36:24] Request received via POST
+[2025-12-19 17:36:25] User Message: Tìm phòng ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:36:25] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:36:26] JSON EXTRACTED: {"action": "search", "city": "Ho Chi Minh City", "price_max": 2000000}
+[2025-12-19 17:36:26] ACTION DATA: Array
+(
+    [action] => search
+    [city] => Ho Chi Minh City
+    [price_max] => 2000000
+)
+
+[2025-12-19 17:36:26] EXCEPTION: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'image' in 'field list'
+#0 C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php(352): PDOStatement->execute(Array)
+#1 C:\Users\emmot\Downloads\rental-management\public\api\ai_chat.php(98): handleAiActions(Object(PDO), 1, '{"action": "sea...', Array, 'T\xC3\xACm ph\xC3\xB2ng \xE1\xBB\x9F...')
+#2 {main}
+[2025-12-19 17:37:28] Request received via POST
+[2025-12-19 17:37:28] User Message: hi
+[2025-12-19 17:37:31] Request received via POST
+[2025-12-19 17:37:31] User Message: Tìm phòng ở Hồ Chí Minh giá 2 triệu
+[2025-12-19 17:37:31] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:37:32] JSON EXTRACTED: {"action": "search", "city": "Hồ Chí Minh", "price_max": 2000000}
+[2025-12-19 17:37:32] ACTION DATA: Array
+(
+    [action] => search
+    [city] => Hồ Chí Minh
+    [price_max] => 2000000
+)
+
+[2025-12-19 17:37:50] Request received via POST
+[2025-12-19 17:37:50] User Message: Tìm phòng ở Hồ Chí Minh
+[2025-12-19 17:37:50] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:38:14] Request received via POST
+[2025-12-19 17:38:14] User Message: Tìm phòng tại khu vực Bình Quới
+[2025-12-19 17:38:14] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:39:03] Request received via POST
+[2025-12-19 17:39:03] User Message: Tìm phòng ở Hồ Chí Minh tại khu vực Bình Quới
+[2025-12-19 17:39:03] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:39:30] Request received via POST
+[2025-12-19 17:39:30] User Message: Tìm phòng ở Hồ Chí Minh tại khu vực Bình Quới giá 7 triệu
+[2025-12-19 17:39:30] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Nếu câu nói chỉ mang tính kể chuyện hoặc hỏi thông tin → KHÔNG tạo JSON.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy nói rõ: 'Hiện tôi chưa tìm thấy thông tin phù hợp'.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hiặc mức giá nào đó.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:44:51] Request received via POST
+[2025-12-19 17:44:51] User Message: hi
+[2025-12-19 17:44:54] Request received via POST
+[2025-12-19 17:44:54] User Message: Chỉ cần tìm theo khu vực: "Tìm phòng ở Bình Quớ
+[2025-12-19 17:44:54] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:45:05] JSON EXTRACTED: {"action": "search", "query": "Bình Quới"}
+[2025-12-19 17:45:05] ACTION DATA: Array
+(
+    [action] => search
+    [query] => Bình Quới
+)
+
+[2025-12-19 17:45:20] Request received via POST
+[2025-12-19 17:45:20] User Message: Tìm phòng ở Hồ Chí Minh
+[2025-12-19 17:45:20] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:47:09] Request received via POST
+[2025-12-19 17:47:09] User Message: Đăng post giúp mình với status "test test" cùng các hình ảnh sau
+[2025-12-19 17:47:09] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:48:32] Request received via POST
+[2025-12-19 17:48:32] User Message: Hi
+[2025-12-19 17:49:02] Request received via POST
+[2025-12-19 17:49:02] User Message: Đăng post này giùm mình với status "Test test" cùng các hình ảnh sau
+[2025-12-19 17:49:02] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:49:04] JSON EXTRACTED: {"action": "create_post", "content": "Test test", "images": ["[URL của hình ảnh 1]", "[URL của hình ảnh 2]", "[URL của hình ảnh 3]", "[URL của hình ảnh 4]"]}
+[2025-12-19 17:49:04] ACTION DATA: Array
+(
+    [action] => create_post
+    [content] => Test test
+    [images] => Array
+        (
+            [0] => [URL của hình ảnh 1]
+            [1] => [URL của hình ảnh 2]
+            [2] => [URL của hình ảnh 3]
+            [3] => [URL của hình ảnh 4]
+        )
+
+)
+
+[2025-12-19 17:51:25] Request received via POST
+[2025-12-19 17:51:25] User Message: Hi
+[2025-12-19 17:51:44] Request received via POST
+[2025-12-19 17:51:44] User Message: Đăng post này giúp mình với caption "Test test" cùng các hình ảnh sau
+[2025-12-19 17:51:44] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:51:46] JSON EXTRACTED: {"action": "create_post", "caption": "Test test", "images_url": ["[Hàm URL của ảnh thứ nhất]", "[Hàm URL của ảnh thứ hai]", "[Hàm URL của ảnh thứ ba]", "[Hàm URL của ảnh thứ tư]"]}
+[2025-12-19 17:51:46] ACTION DATA: Array
+(
+    [action] => create_post
+    [caption] => Test test
+    [images_url] => Array
+        (
+            [0] => [Hàm URL của ảnh thứ nhất]
+            [1] => [Hàm URL của ảnh thứ hai]
+            [2] => [Hàm URL của ảnh thứ ba]
+            [3] => [Hàm URL của ảnh thứ tư]
+        )
+
+)
+
+[2025-12-19 17:56:37] Request received via POST
+[2025-12-19 17:56:37] No FILES['images'] found.
+[2025-12-19 17:56:38] User Message: hi
+[2025-12-19 17:56:47] Request received via POST
+[2025-12-19 17:56:47] FILES['images'] detected: Array
+(
+    [name] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [full_path] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [type] => Array
+        (
+            [0] => image/jpeg
+            [1] => image/jpeg
+            [2] => image/jpeg
+            [3] => image/jpeg
+        )
+
+    [tmp_name] => Array
+        (
+            [0] => C:\Users\emmot\AppData\Local\Temp\php64DE.tmp
+            [1] => C:\Users\emmot\AppData\Local\Temp\php64DF.tmp
+            [2] => C:\Users\emmot\AppData\Local\Temp\php64E0.tmp
+            [3] => C:\Users\emmot\AppData\Local\Temp\php64E1.tmp
+        )
+
+    [error] => Array
+        (
+            [0] => 0
+            [1] => 0
+            [2] => 0
+            [3] => 0
+        )
+
+    [size] => Array
+        (
+            [0] => 8288
+            [1] => 6027
+            [2] => 6697
+            [3] => 7096
+        )
+
+)
+
+[2025-12-19 17:56:47] Image uploaded: uploads/ai_generated/9108bccdb6590f7a.jpg
+[2025-12-19 17:56:47] Image uploaded: uploads/ai_generated/1a35f054dae2f9d6.jpg
+[2025-12-19 17:56:47] Image uploaded: uploads/ai_generated/5afd698f14d47ad1.jpg
+[2025-12-19 17:56:47] Image uploaded: uploads/ai_generated/719cc135145afe4c.jpg
+[2025-12-19 17:56:47] User Message: Đăng post này giúp mình với status "Test test" cùng các hình ảnh sau
+[2025-12-19 17:56:47] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+Người dùng ĐÃ GỬI kèm 4 hình ảnh. Đường dẫn ảnh đầu tiên: uploads/ai_generated/9108bccdb6590f7a.jpg. Nếu bài viết/tin đăng cần 1 ảnh, hãy dùng ảnh này. Nếu cần nhiều ảnh, hệ thống đã lưu tất cả.
+
+[2025-12-19 17:57:00] JSON EXTRACTED: {"action": "create_post", "status": "Test test", "images": ["uploads/ai_generated/9108bccdb6590f7a.jpg", "uploads/ai_generated/another_image_url_1", "uploads/ai_generated/third_image_url", "uploads/ai_generated/fourth_image_url"]}
+[2025-12-19 17:57:00] ACTION DATA: Array
+(
+    [action] => create_post
+    [status] => Test test
+    [images] => Array
+        (
+            [0] => uploads/ai_generated/9108bccdb6590f7a.jpg
+            [1] => uploads/ai_generated/another_image_url_1
+            [2] => uploads/ai_generated/third_image_url
+            [3] => uploads/ai_generated/fourth_image_url
+        )
+
+)
+
+[2025-12-19 17:57:29] Request received via POST
+[2025-12-19 17:57:29] No FILES['images'] found.
+[2025-12-19 17:57:29] User Message: Tư vấn giúp mình phòng trọ ở Hồ Chí Minh
+[2025-12-19 17:57:29] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH:
+ - Người dùng KHÔNG gửi ảnh.
+ - Nếu KHÔNG có ảnh, KHÔNG được tự động tạo SOCIAL POST hoặc RENTAL POST.
+ - Nếu người dùng có ý định đăng nhưng chưa có ảnh, hãy yêu cầu họ gửi ảnh trước khi tiếp tục.
+ - Trong trường hợp không có ảnh và nội dung mơ hồ, ưu tiên hiểu là CONSULTATION (tìm phòng).
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+[2025-12-19 17:57:31] JSON EXTRACTED: {"action": "search", "city": "Hồ Chí Minh"}
+[2025-12-19 17:57:31] ACTION DATA: Array
+(
+    [action] => search
+    [city] => Hồ Chí Minh
+)
+
+[2025-12-19 17:59:17] Request received via POST
+[2025-12-19 17:59:17] FILES['images'] detected: Array
+(
+    [name] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [full_path] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [type] => Array
+        (
+            [0] => image/jpeg
+            [1] => image/jpeg
+            [2] => image/jpeg
+            [3] => image/jpeg
+        )
+
+    [tmp_name] => Array
+        (
+            [0] => C:\Users\emmot\AppData\Local\Temp\phpAE26.tmp
+            [1] => C:\Users\emmot\AppData\Local\Temp\phpAE27.tmp
+            [2] => C:\Users\emmot\AppData\Local\Temp\phpAE28.tmp
+            [3] => C:\Users\emmot\AppData\Local\Temp\phpAE29.tmp
+        )
+
+    [error] => Array
+        (
+            [0] => 0
+            [1] => 0
+            [2] => 0
+            [3] => 0
+        )
+
+    [size] => Array
+        (
+            [0] => 8288
+            [1] => 6027
+            [2] => 6697
+            [3] => 7096
+        )
+
+)
+
+[2025-12-19 17:59:17] Image uploaded: uploads/ai_generated/1a97c5d31e470529.jpg
+[2025-12-19 17:59:17] Image uploaded: uploads/ai_generated/a9a38498dcedc3c1.jpg
+[2025-12-19 17:59:17] Image uploaded: uploads/ai_generated/2ae2d51132e11c58.jpg
+[2025-12-19 17:59:17] Image uploaded: uploads/ai_generated/3837d3668e07ebbf.jpg
+[2025-12-19 17:59:17] User Message: Đăng giúp mình phòng này với tiêu đề:"Phòng trọ test", giá 5000000, diện tích 50, thành phố Hồ Chí Minh, quận Gò Vấp, địa chỉ cụ thể là 123 Phạm Văn Đồng, loại phòng riêng tư với mô tả:"Test" và các hình ảnh sau
+[2025-12-19 17:59:17] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ (ví dụ: 'tôi có phòng cho thuê', 'đăng giúp mình phòng này', 'đăng phòng trọ', 'cho thuê phòng giá 3tr').
+   - LƯU Ý: Nếu người dùng chỉ nói 'tìm trọ' hoặc 'muốn thuê', ĐÓ LÀ KHÁCH THUÊ -> Về mục 2.
+   - JSON: {"action": "create_listing", ...}
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+Người dùng ĐÃ GỬI kèm 4 hình ảnh. Đường dẫn ảnh đầu tiên: uploads/ai_generated/1a97c5d31e470529.jpg. Nếu bài viết/tin đăng cần 1 ảnh, hãy dùng ảnh này. Nếu cần nhiều ảnh, hệ thống đã lưu tất cả.
+
+[2025-12-19 18:04:16] Request received via POST
+[2025-12-19 18:04:16] No FILES['images'] found.
+[2025-12-19 18:04:16] User Message: hi
+[2025-12-19 18:04:22] Request received via POST
+[2025-12-19 18:04:22] FILES['images'] detected: Array
+(
+    [name] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [full_path] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [type] => Array
+        (
+            [0] => image/jpeg
+            [1] => image/jpeg
+            [2] => image/jpeg
+            [3] => image/jpeg
+        )
+
+    [tmp_name] => Array
+        (
+            [0] => C:\Users\emmot\AppData\Local\Temp\php565D.tmp
+            [1] => C:\Users\emmot\AppData\Local\Temp\php565E.tmp
+            [2] => C:\Users\emmot\AppData\Local\Temp\php565F.tmp
+            [3] => C:\Users\emmot\AppData\Local\Temp\php5660.tmp
+        )
+
+    [error] => Array
+        (
+            [0] => 0
+            [1] => 0
+            [2] => 0
+            [3] => 0
+        )
+
+    [size] => Array
+        (
+            [0] => 8288
+            [1] => 6027
+            [2] => 6697
+            [3] => 7096
+        )
+
+)
+
+[2025-12-19 18:04:22] Image uploaded: uploads/ai_generated/f2f33a5584d532c7.jpg
+[2025-12-19 18:04:22] Image uploaded: uploads/ai_generated/13a7a21b18b29ffa.jpg
+[2025-12-19 18:04:22] Image uploaded: uploads/ai_generated/87201438ac8aa200.jpg
+[2025-12-19 18:04:22] Image uploaded: uploads/ai_generated/e0e33d61e21ee568.jpg
+[2025-12-19 18:04:22] User Message: Đăng giúp mình phòng này với tiêu đề :"Phòng trọ test", giá 5 triệu, diện tích 50, thành phố Hồ Chí Minh, quận Gò Vấp, địa chỉ cụ thể là 123 Phạm Văn Đồng, loại phòng riêng tư, với mô tả :"Test
+[2025-12-19 18:04:22] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "create_listing", "title": "...", "price": 123, "area": 20, "city": "...", "address": "...", "room_type": "...", "description": "..."}
+   - Nếu thiếu thông tin, JSON vẫn phải được tạo với các trường rỗng hoặc giá trị mặc định để hệ thống xử lý.
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+Người dùng ĐÃ GỬI kèm 4 hình ảnh. Đường dẫn ảnh đầu tiên: uploads/ai_generated/f2f33a5584d532c7.jpg. Nếu bài viết/tin đăng cần 1 ảnh, hãy dùng ảnh này. Nếu cần nhiều ảnh, hệ thống đã lưu tất cả.
+
+[2025-12-19 18:04:30] JSON EXTRACTED: {"action": "create_listing", "title": "Phòng trọ test", "price": 5000000, "area": 50, "city": "Hồ Chí Minh", "address": "123 Phạm Văn Đồng, Gò Vấp", "room_type": "riêng tư", "description": "Test"}
+[2025-12-19 18:04:30] ACTION DATA: Array
+(
+    [action] => create_listing
+    [title] => Phòng trọ test
+    [price] => 5000000
+    [area] => 50
+    [city] => Hồ Chí Minh
+    [address] => 123 Phạm Văn Đồng, Gò Vấp
+    [room_type] => riêng tư
+    [description] => Test
+)
+
+[2025-12-19 18:09:44] Request received via POST
+[2025-12-19 18:09:44] No FILES['images'] found.
+[2025-12-19 18:09:44] User Message: Hi
+[2025-12-19 18:09:56] Request received via POST
+[2025-12-19 18:09:56] FILES['images'] detected: Array
+(
+    [name] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [full_path] => Array
+        (
+            [0] => phongtro5.jpg
+            [1] => phongtro4.jpg
+            [2] => phongtro3.jpg
+            [3] => phongtro2.jpg
+        )
+
+    [type] => Array
+        (
+            [0] => image/jpeg
+            [1] => image/jpeg
+            [2] => image/jpeg
+            [3] => image/jpeg
+        )
+
+    [tmp_name] => Array
+        (
+            [0] => C:\Users\emmot\AppData\Local\Temp\php6EF2.tmp
+            [1] => C:\Users\emmot\AppData\Local\Temp\php6EF3.tmp
+            [2] => C:\Users\emmot\AppData\Local\Temp\php6EF4.tmp
+            [3] => C:\Users\emmot\AppData\Local\Temp\php6EF5.tmp
+        )
+
+    [error] => Array
+        (
+            [0] => 0
+            [1] => 0
+            [2] => 0
+            [3] => 0
+        )
+
+    [size] => Array
+        (
+            [0] => 8288
+            [1] => 6027
+            [2] => 6697
+            [3] => 7096
+        )
+
+)
+
+[2025-12-19 18:09:56] Image uploaded: uploads/ai_generated/81e70bb7ad9a4ffe.jpg
+[2025-12-19 18:09:56] Image uploaded: uploads/ai_generated/66678ad9cf5f5ceb.jpg
+[2025-12-19 18:09:56] Image uploaded: uploads/ai_generated/832f3025d501f2d8.jpg
+[2025-12-19 18:09:56] Image uploaded: uploads/ai_generated/70256c6bdeedfe84.jpg
+[2025-12-19 18:09:56] User Message: Đăng giúp mình phòng này với tiêu đề :"Phòng trọ test", giá 5 triệu, diện tích 50, thành phố Hồ Chí Minh, quận Gò Vấp, địa chỉ cụ thể là 123 Phạm Văn Đồng, loại phòng riêng tư, với mô tả :"Test
+[2025-12-19 18:09:56] SYSTEM PROMPT: Bạn là trợ lý ảo AI cho trang web Thuê Trọ. Nhiệm vụ của bạn là tư vấn tìm phòng, giúp đăng bài viết, và đăng tin phòng trọ.
+Dưới đây là danh sách phòng trọ hiện có trong hệ thống:
+Dữ liệu phòng trọ hiện có (ID - Tiêu đề - Giá - Địa chỉ):
+- ID 25: Phòng trọ tại Bình Quới - Giá 7,000,000 VND - 480 Bình Quới, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=25
+- ID 4: Phòng trọ gần Bách Khoa - Giá 5,000,000 VND - 345 FGH, Ha Noi (private)
+  Url chi tiết: /listing_detail.php?id=4
+- ID 2: Phòng trọ giá rẻ ở Thủ Đức - Giá 1,500,000 VND - 123 LVV, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=2
+- ID 1: Phòng trọ giá rẻ ở quận 1 - Giá 2,000,000 VND - 123 ABC, Ho Chi Minh (private)
+  Url chi tiết: /listing_detail.php?id=1
+
+
+QUY TẮC QUAN TRỌNG (JSON ACTION MODE):
+Bạn phải phân tích ý định của người dùng và chọn hành động phù hợp:
+
+QUY TẮC ƯU TIÊN:
+ - GREETING luôn ưu tiên cao nhất.
+ - SEARCH (tìm phòng) luôn TRẢ VỀ JSON.
+ - SOCIAL POST và RENTAL POST chỉ kích hoạt khi có từ khóa RÕ RÀNG.
+ - Không được tự suy diễn hành động.
+
+CHỐNG BỊA ĐẶT:
+ - Không được tự tạo phòng trọ, bài viết hoặc ID không tồn tại.
+ - Chỉ trả lời dựa trên dữ liệu được cung cấp từ hệ thống.
+ - Nếu không có dữ liệu phù hợp, hãy trích xuất JSON 'search' để hệ thống tìm kiếm trong database.
+
+NGÔN NGỮ & GIỌNG ĐIỆU:
+ - Luôn trả lời bằng tiếng Việt.
+ - Giọng điệu thân thiện, hỗ trợ, giống nhân viên tư vấn thuê trọ.
+ - Không dùng từ ngữ học thuật hoặc máy móc.
+
+1. GREETING (Chào hỏi):
+   - Nếu người dùng chào (ví dụ: 'xin chào', 'hi', 'hello'), hãy trả lời chính xác câu này: "Xin chào, bạn muốn tôi giúp gì?"
+   - Trả lời bằng text thông thường, KHÔNG dùng JSON.
+
+2. SEARCH (Tìm kiếm phòng - KHÁCH THUÊ):
+   - Khi người dùng muốn TÌM, HỎI THUÊ, xem phòng ở khu vực nào đó hoặc mức giá nào đó.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "search", "city": "Tên thành phố (nếu có)", "price_max": "Giá tối đa (số)", "query": "Yêu cầu khác (quận, tên đường...)"}
+   - Ví dụ: 'Tìm phòng ở HN giá 3 triệu' -> {"action": "search", "city": "Hà Nội", "price_max": 3000000}
+   - Ví dụ: 'Có phòng nào ở Quận 1 không' -> {"action": "search", "query": "Quận 1"}
+   - Ví dụ: 'Khu vực Bình Quới giá 7 triệu' -> {"action": "search", "query": "Bình Quới", "price_max": 7000000}
+
+3. SOCIAL POST (Đăng bài - CHỦ TRỌ/CỘNG ĐỒNG):
+   - Chỉ khi người dùng yêu cầu rõ ràng: 'đăng tin giúp mình', 'đăng bài', 'viết status', 'post lên tường'.
+   - JSON: {"action": "create_post", ...}
+
+4. RENTAL POST (Đăng tin cho thuê - CHỦ TRỌ):
+   - Chỉ khi người dùng nói rõ là muốn CHO THUÊ hoặc ĐĂNG TIN CỦA HỌ.
+   - QUAN TRỌNG: BẮT BUỘC TRẢ VỀ JSON. KHÔNG trả lời bằng text.
+   - JSON: {"action": "create_listing", "title": "...", "price": 123, "area": 20, "city": "...", "district": "...", "address": "...", "room_type": "...", "description": "..."}
+   - Nếu thiếu thông tin, JSON vẫn phải được tạo với các trường rỗng hoặc giá trị mặc định để hệ thống xử lý.
+
+LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.
+Người dùng ĐÃ GỬI kèm 4 hình ảnh. Đường dẫn ảnh đầu tiên: uploads/ai_generated/81e70bb7ad9a4ffe.jpg. Nếu bài viết/tin đăng cần 1 ảnh, hãy dùng ảnh này. Nếu cần nhiều ảnh, hệ thống đã lưu tất cả.
+
+[2025-12-19 18:10:12] JSON EXTRACTED: {
+  "action": "create_listing",
+  "title": "Phòng trọ test",
+  "price": 5000000,
+  "area": 50,
+  "city": "Hồ Chí Minh",
+  "district": "quận Gò Vấp",
+  "address": "123 Phạm Văn Đồng",
+  "room_type": "riêng tư",
+  "description": "<small><i>Test</i></small>",
+  "images": [
+    "uploads/ai_generated/81e70bb7ad9a4ffe.jpg"
+  ]
+}
+[2025-12-19 18:10:12] ACTION DATA: Array
+(
+    [action] => create_listing
+    [title] => Phòng trọ test
+    [price] => 5000000
+    [area] => 50
+    [city] => Hồ Chí Minh
+    [district] => quận Gò Vấp
+    [address] => 123 Phạm Văn Đồng
+    [room_type] => riêng tư
+    [description] => <small><i>Test</i></small>
+    [images] => Array
+        (
+            [0] => uploads/ai_generated/81e70bb7ad9a4ffe.jpg
+        )
+
+)
+

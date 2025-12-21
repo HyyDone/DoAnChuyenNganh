@@ -10,7 +10,7 @@ if (session_status() == PHP_SESSION_NONE) {
 $currentUser = null;
 if (isset($_SESSION['user_id'])) {
     try {
-        $stmt = $pdo->prepare("SELECT username, full_name, avatar FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT username, full_name, avatar, is_landlord FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $currentUser = $stmt->fetch();
     } catch (PDOException $e) {
@@ -263,6 +263,7 @@ include __DIR__ . '/includes/header.php';
         <!-- Form Column -->
         <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%; height: fit-content; position: sticky; top: 20px;">
             <h3 style="margin-top: 0; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Đăng phòng</h3>
+            <?php if ($currentUser && !empty($currentUser['is_landlord'])): ?>
             <form id="postListingForm" enctype="multipart/form-data">
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Tiêu đề</label>
@@ -312,6 +313,16 @@ include __DIR__ . '/includes/header.php';
                 </div>
                 <button type="submit" style="width: 100%; background: #1877f2; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Đăng tin</button>
             </form>
+            <?php else: ?>
+            <div style="text-align:center; padding:30px 20px; color:#65676b; background:#f7f7f7; border-radius:8px; border:1px dashed #ced0d4;">
+                <i class="fa-solid fa-user-shield" style="font-size:32px; margin-bottom:15px; color:#ccc;"></i>
+                <h4 style="margin:0 0 10px 0;">Đăng tin cho thuê</h4>
+                <p style="font-size:14px; margin-bottom:20px;">Bạn cần kích hoạt vai trò <b>Chủ trọ</b> để đăng tin cho thuê phòng.</p>
+                <a href="/profile.php" style="display:inline-block; padding:10px 20px; background:#e7f3ff; color:#1877f2; text-decoration:none; font-weight:bold; border-radius:6px; transition:0.2s;">
+                    Kích hoạt ngay
+                </a>
+            </div>
+            <?php endif; ?>
         </div>
 
     </div>
@@ -416,7 +427,10 @@ const districtData = {
 };
 
 function updateDistricts() {
-    const city = document.getElementById('postCity').value;
+    const citySelect = document.getElementById('postCity');
+    if (!citySelect) return;
+    
+    const city = citySelect.value;
     const districtSelect = document.getElementById('postDistrict');
     const districts = districtData[city] || [];
     

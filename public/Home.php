@@ -18,7 +18,6 @@ session_start();
             background-color: #f8f9fa;
         }
 
-        /* Hero Section */
         .hero-section {
             background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
@@ -65,7 +64,6 @@ session_start();
             box-shadow: 0 6px 20px rgba(24, 119, 242, 0.6);
         }
 
-        /* Proposed Rooms Section */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -205,14 +203,13 @@ session_start();
     <div class="listing-grid">
         <?php
         try {
-            // Fetch 4 random/latest listings
             $stmt = $pdo->query("
                 SELECT l.*, 
                        (SELECT file_path FROM listing_images WHERE listing_id = l.id LIMIT 1) as main_image 
                 FROM listings l 
                 WHERE l.status = 'available' 
                 ORDER BY l.created_at DESC 
-                LIMIT 4
+                LIMIT 6
             ");
             $listings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

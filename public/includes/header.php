@@ -11,6 +11,7 @@ if (!function_exists('isActive')) {
     }
 }
 ?>
+<link rel="stylesheet" href="/assets/css/chat.css">
 <header style="background:#1877f2;color:white;padding:0 20px;height:60px;display:flex;justify-content:space-between;align-items:center;">
     <div style="display:flex;align-items:center;height:100%;">
         <a href="/Home.php" style="text-decoration:none;color:inherit;display:flex;align-items:center;margin-right:20px;">
@@ -25,9 +26,14 @@ if (!function_exists('isActive')) {
     <nav style="display:flex;align-items:center;height:100%;">
         <?php if (!empty($_SESSION['user_id'])): 
             require_once __DIR__ . '/../../config/db.php';
-            $stmt = $pdo->prepare("SELECT username, full_name, avatar FROM users WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $headerUser = $stmt->fetch();
+            try {
+                $stmt = $pdo->prepare("SELECT username, full_name, avatar, is_landlord FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $headerUser = $stmt->fetch();
+            } catch (PDOException $e) {
+                error_log("Header DB Error: " . $e->getMessage());
+                $headerUser = false;
+            }
             
             if (!$headerUser) {
                 $headerUser = ['username' => 'User', 'full_name' => '', 'avatar' => ''];
@@ -78,22 +84,43 @@ if (!function_exists('isActive')) {
                     <?= htmlspecialchars($displayName) ?>
                     <i class="fa-solid fa-caret-down" style="margin-left: 8px;"></i>
                 </div>
-                <div id="userDropdown" style="display:none; position:absolute; right:0; top:45px; background:white; color:black; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:230px; z-index:1000; overflow:hidden;">
+                <div id="userDropdown" style="display:none; position:absolute; right:0; top:45px; background:white; color:black; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:280px; z-index:1000; overflow:hidden;">
+                    <!-- Personal Info -->
                     <a href="/profile.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
-                        <i class="fa-solid fa-user" style="width:20px;"></i> Thông tin cá nhân
+                        <i class="fa-solid fa-user" style="width:20px; text-align:center; margin-right:10px;"></i> Thông tin cá nhân
                     </a>
-                    <a href="/manage_rentals.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
-                        <i class="fa-solid fa-house-chimney" style="width:20px;"></i> Cho Thuê/Thuê Nhà
-                    </a>
-                    <a href="/my_appliances.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
-                        <i class="fa-solid fa-blender-phone" style="width:20px;"></i> Cho thuê đồ gia dụng
+
+                    <div style="border-top:1px solid #eee;"></div>
+                    
+                    <!-- Tenant Section -->
+                    <div style="padding: 8px 15px; background-color: #f7f7f7; font-weight: bold; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Người thuê
+                    </div>
+                    <a href="/manage_rentals.php?view=my_rentals" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
+                        <i class="fa-solid fa-house-chimney" style="width:20px; text-align:center; margin-right:10px;"></i> Nhà thuê
                     </a>
                     <a href="/favorites.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
-                        <i class="fa-solid fa-heart" style="width:20px;"></i> Yêu thích
+                        <i class="fa-solid fa-heart" style="width:20px; text-align:center; margin-right:10px;"></i> Yêu thích
                     </a>
+
+                    <div style="border-top:1px solid #eee;"></div>
+                    
+                    <?php if (!empty($headerUser['is_landlord'])): ?>
+                    <!-- Landlord Section -->
+                    <div style="padding: 8px 15px; background-color: #f7f7f7; font-weight: bold; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Cho thuê
+                    </div>
+                    <a href="/manage_rentals.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
+                        <i class="fa-solid fa-house-chimney" style="width:20px; text-align:center; margin-right:10px;"></i> Quản lý phòng trọ
+                    </a>
+                    <a href="/my_appliances.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
+                        <i class="fa-solid fa-blender-phone" style="width:20px; text-align:center; margin-right:10px;"></i> Cho thuê đồ gia dụng
+                    </a>
+                    <?php endif; ?>
+
                     <div style="border-top:1px solid #eee;"></div>
                     <a href="/logout.php" style="display:block; padding:10px 15px; text-decoration:none; color:#dc3545; transition:background 0.2s;">
-                        <i class="fa-solid fa-right-from-bracket" style="width:20px;"></i> Đăng xuất
+                        <i class="fa-solid fa-right-from-bracket" style="width:20px; text-align:center; margin-right:10px;"></i> Đăng xuất
                     </a>
                 </div>
             </div>

@@ -1596,6 +1596,8 @@ if (isset($_SESSION['user_id'])) {
     <div id="toast-notification" style="visibility: hidden; min-width: 250px; background-color: rgba(0,0,0,0.8); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 10000; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.1rem; opacity: 0; transition: opacity 0.5s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
         Đăng post thành công
     </div>
+    
+    <?php include __DIR__ . '/includes/footer.php'; ?>
 </body>
 
 </html>

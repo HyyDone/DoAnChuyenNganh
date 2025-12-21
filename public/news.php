@@ -31,10 +31,10 @@ try {
 
     // Get Data
     if ($category) {
-        $stmtList = $pdo->prepare("SELECT * FROM news WHERE category = ? ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+        $stmtList = $pdo->prepare("SELECT * FROM news WHERE category = :category ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
         $stmtList->bindParam(':limit', $limit, PDO::PARAM_INT);
         $stmtList->bindParam(':offset', $offset, PDO::PARAM_INT);
-        $stmtList->bindValue(1, $category); // bind param for question mark
+        $stmtList->bindParam(':category', $category); 
         $stmtList->execute();
     } else {
         $stmtList = $pdo->prepare("SELECT * FROM news ORDER BY created_at DESC LIMIT :limit OFFSET :offset");

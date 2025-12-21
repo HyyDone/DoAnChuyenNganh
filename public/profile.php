@@ -8,7 +8,7 @@ $currentUid = (int) current_user_id();
 $profileUid = isset($_GET['id']) ? intval($_GET['id']) : $currentUid;
 
 // Fetch profile user
-$stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio,is_landlord FROM users WHERE id = ?");
 $stmt->execute([$profileUid]);
 $user = $stmt->fetch();
 
@@ -332,7 +332,12 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                 </div>
                 <div class="user-details">
-                    <h1><?= htmlspecialchars($user['full_name'] ?: $user['username']) ?></h1>
+                    <h1 style="display:flex; align-items:center; gap:8px;">
+                        <?= htmlspecialchars($user['full_name'] ?: $user['username']) ?>
+                        <?php if (!empty($user['is_landlord'])): ?>
+                            <i class="fa-solid fa-circle-check" style="color:#1877f2; font-size:24px;" title="Đã xác minh chủ trọ"></i>
+                        <?php endif; ?>
+                    </h1>
                     <p>@<?= htmlspecialchars($user['username']) ?></p>
                 </div>
             </div>
@@ -341,6 +346,11 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button class="edit-profile-btn" onclick="openEditModal()">
                     <i class="fa-solid fa-pen"></i> Chỉnh sửa trang cá nhân
                 </button>
+                <?php if (empty($user['is_landlord'])): ?>
+                    <button class="edit-profile-btn" onclick="openOtpModal()" style="margin-left:10px; background:#e7f3ff; color:#1877f2;">
+                        <i class="fa-solid fa-user-shield"></i> Kích hoạt vai trò chủ trọ
+                    </button>
+                <?php endif; ?>
             <?php else: ?>
                 <button class="edit-profile-btn" onclick="openChat(<?= $user['id'] ?>, '<?= htmlspecialchars($user['full_name'] ?: $user['username'], ENT_QUOTES) ?>', '<?= htmlspecialchars($user['avatar'] ?? '', ENT_QUOTES) ?>')">
                     <i class="fa-brands fa-facebook-messenger"></i> Nhắn tin
@@ -427,9 +437,104 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
+    <!-- OTP Modal -->
+    <div class="modal-overlay" id="otpModal">
+        <div class="modal-box" style="max-width:400px;">
+            <div class="modal-header">
+                <h3>Xác thực chủ trọ</h3>
+                <div class="close-btn" onclick="document.getElementById('otpModal').classList.remove('active')">
+                    <i class="fa-solid fa-xmark"></i>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:15px; text-align:center;">
+                    Nhấn "Gửi mã" để nhận mã OTP qua email, sau đó nhập mã vào bên dưới.
+                </p>
+                
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <input type="text" id="otpInput" class="form-control" placeholder="Nhập mã OTP (6 số)" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; text-align:center; letter-spacing:2px;">
+                    <button onclick="sendOtp()" id="btnSendOtp" style="padding:10px; background:#e4e6eb; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Gửi mã</button>
+                </div>
+                
+                <button onclick="verifyOtp()" style="width:100%; padding:12px; background:#1877f2; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Xác nhận</button>
+                <div id="otpMsg" style="margin-top:10px; text-align:center; font-size:14px; min-height:20px;"></div>
+            </div>
+        </div>
+    </div>
+
     <?php include __DIR__ . '/includes/footer.php'; ?>
 
     <script>
+        async function openOtpModal() {
+            document.getElementById('otpModal').classList.add('active');
+        }
+
+        async function sendOtp() {
+            const btn = document.getElementById('btnSendOtp');
+            const msg = document.getElementById('otpMsg');
+            btn.disabled = true;
+            btn.innerText = 'Đang gửi...';
+            msg.innerText = '';
+            
+            try {
+                const res = await fetch('/api/otp.php?action=send_otp', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    msg.style.color = 'green';
+                    msg.innerText = data.message;
+                    // For demo, maybe auto-fill or alert
+                    if (data.debug_otp) {
+                        console.log('DEBUG OTP:', data.debug_otp);
+                        // alert('DEBUG OTP: ' + data.debug_otp);
+                    }
+                } else {
+                    msg.style.color = 'red';
+                    msg.innerText = data.message;
+                }
+            } catch (err) {
+                console.error(err);
+                msg.innerText = 'Lỗi kết nối';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Gửi lại';
+            }
+        }
+
+        async function verifyOtp() {
+            const otp = document.getElementById('otpInput').value;
+            const msg = document.getElementById('otpMsg');
+            
+            if (!otp) {
+                msg.style.color = 'red';
+                msg.innerText = 'Vui lòng nhập mã OTP';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/otp.php?action=verify_otp', {
+                    method: 'POST',
+                    body: JSON.stringify({ otp: otp }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    msg.style.color = 'green';
+                    msg.innerText = data.message;
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                     msg.style.color = 'red';
+                    msg.innerText = data.message;
+                }
+            } catch (err) {
+                 msg.style.color = 'red';
+                 msg.innerText = 'Lỗi kết nối';
+            }
+        }
+
+
+
         const modal = document.getElementById('editModal');
 
         function openEditModal() {
