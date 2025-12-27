@@ -248,22 +248,38 @@ if (!isset($_SESSION['user_id'])) {
 
     <div class="main-layout">
         <!-- LEFT COLUMN -->
+        <!-- LEFT COLUMN -->
         <div class="layout-left">
-            <button class="nav-btn active" onclick="switchView('my_listings', this)">
-                <i class="fa-solid fa-house-user"></i> Cho Thuê
-            </button>
-            <button class="nav-btn" onclick="switchView('my_rentals', this)">
-                <i class="fa-solid fa-key"></i> Nhà Thuê
-            </button>
-            <button class="nav-btn" onclick="switchView('stats', this)">
-                <i class="fa-solid fa-chart-pie"></i> Thống kê
-            </button>
-            <button class="nav-btn" onclick="switchView('contracts', this)">
-                <i class="fa-solid fa-file-contract"></i> Hợp đồng
-            </button>
-            <button class="nav-btn" onclick="switchView('viewings', this)">
-                <i class="fa-regular fa-calendar-check"></i> Lịch xem phòng
-            </button>
+            <?php 
+            $view = $_GET['view'] ?? 'my_listings';
+            $isTenantMode = ($view === 'my_rentals');
+            ?>
+
+            <?php if ($isTenantMode): ?>
+                <!-- Tenant Menu -->
+                <button class="nav-btn active" onclick="switchView('my_rentals', this)">
+                    <i class="fa-solid fa-key"></i> Nhà Thuê
+                </button>
+                <div style="margin-top:auto; padding-top:20px; border-top:1px solid #eee;">
+                    <a href="/profile.php" style="display:block; text-decoration:none; color:#666; font-size:14px;">
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại
+                    </a>
+                </div>
+            <?php else: ?>
+                <!-- Landlord Menu -->
+                <button class="nav-btn <?php echo $view === 'my_listings' ? 'active' : ''; ?>" onclick="switchView('my_listings', this)">
+                    <i class="fa-solid fa-house-user"></i> Cho Thuê
+                </button>
+                <button class="nav-btn <?php echo $view === 'stats' ? 'active' : ''; ?>" onclick="switchView('stats', this)">
+                    <i class="fa-solid fa-chart-pie"></i> Thống kê
+                </button>
+                <button class="nav-btn <?php echo $view === 'contracts' ? 'active' : ''; ?>" onclick="switchView('contracts', this)">
+                    <i class="fa-solid fa-file-contract"></i> Hợp đồng
+                </button>
+                <button class="nav-btn <?php echo $view === 'viewings' ? 'active' : ''; ?>" onclick="switchView('viewings', this)">
+                    <i class="fa-regular fa-calendar-check"></i> Lịch xem phòng
+                </button>
+            <?php endif; ?>
         </div>
 
         <!-- CENTER COLUMN -->
@@ -578,10 +594,20 @@ if (!isset($_SESSION['user_id'])) {
                 const btn = document.querySelector(`.nav-btn[onclick*="'${view}'"]`);
                 if (btn) {
                     switchView(view, btn);
-                    return; // switchView calls loadData
+                    // Do not return here, fall through to check for actions
                 }
+            } else {
+                 loadData();
             }
-            loadData();
+            
+            // Check for contract action
+            const action = urlParams.get('action');
+            const contractId = urlParams.get('contract_id');
+            if (action === 'view_contract' && contractId) {
+                // Wait a bit to ensure data might be loaded or just call it directly.
+                // viewContract fetches data independently, so it's fine.
+                viewContract(contractId);
+            }
         });
 
         function switchView(view, btn) {
@@ -761,6 +787,16 @@ if (!isset($_SESSION['user_id'])) {
                                 <div><i class="fa-solid fa-phone"></i> Chủ nhà: ${item.owner_phone || 'N/A'}</div>
                                 <div>Thời hạn: ${item.end_date || 'Không xác định'}</div>
                             </div>`;
+                            
+                        if (item.contract_id) {
+                            extraInfo += `
+                                <div style="margin-top:8px;">
+                                    <button class="btn" style="background:#e7f3ff; color:#1877f2; width:auto; padding:6px 12px; font-size:0.9rem; border:1px solid #1877f2;" onclick="event.stopPropagation(); viewContract(${item.contract_id})">
+                                        <i class="fa-solid fa-file-contract"></i> Xem hợp đồng
+                                    </button>
+                                </div>
+                            `;
+                        }
                      }
                 }
 

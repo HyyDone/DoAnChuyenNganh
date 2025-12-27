@@ -2,21 +2,31 @@
 require_once __DIR__ . '/../config/db.php';
 session_start();
 $errors = [];
+if (isset($_GET['error']) && $_GET['error'] === 'account_locked') {
+    $errors[] = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.";
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $loginInput = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     if (!$loginInput || !$password) $errors[] = "Vui lòng nhập tài khoản và mật khẩu.";
     if (empty($errors)) {
-        // Allow login by Username, Email, or Phone
+        
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? OR username = ? OR phone = ? LIMIT 1");
         $stmt->execute([$loginInput, $loginInput, $loginInput]);
         $user = $stmt->fetch();
         
-        // Kiểm tra mật khẩu bằng SHA256
-        if ($user && hash('sha256', $password) === $user['password'] && $user['is_active']) {
+        
+        $isPasswordCorrect = false;
+        if (password_verify($password, $user['password'])) {
+            $isPasswordCorrect = true;
+        } elseif (hash('sha256', $password) === $user['password']) {
+            $isPasswordCorrect = true;
+        }
+
+        if ($user && $isPasswordCorrect && $user['is_active']) {
             session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
-            // $_SESSION['role'] = $user['role']; // Role không còn trong DB
+            $_SESSION['role'] = $user['role']; 
             header('Location: /index.php');
             exit;
         } else {

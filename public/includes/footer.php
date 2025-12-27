@@ -16,7 +16,7 @@
 </footer>
 <?php endif; ?>
 
-<link rel="stylesheet" href="/assets/css/chat.css">
+<link rel="stylesheet" href="/assets/css/chat.css?v=<?= time() ?>">
 <script>
     window.currentUserId = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
     window.isUserLoggedIn = <?= isset($_SESSION['user_id']) ? 'true' : 'false' ?>;
@@ -41,10 +41,10 @@
             </label>
             <input type="file" id="chatImageInput" accept="image/*" style="display:none">
             
-            <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." onkeydown="handleChatKey(event)">
+            <input type="text" class="chat-input" id="humanChatInput" placeholder="Nhập tin nhắn..." onkeydown="handleChatKey(event)">
             <button class="chat-send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
 </div>
 
-<script src="/assets/js/chat.js"></script>
+<script src="/assets/js/chat.js?v=<?= time() ?>"></script>

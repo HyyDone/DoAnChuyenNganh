@@ -1,6 +1,15 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 session_start();
+
+
+try {
+    $postCount = $pdo->query("SELECT COUNT(*) FROM posts")->fetchColumn();
+    $listingCount = $pdo->query("SELECT COUNT(*) FROM listings WHERE status = 'available'")->fetchColumn();
+} catch (PDOException $e) {
+    $postCount = 0;
+    $listingCount = 0;
+}
 ?>
 <!doctype html>
 <html lang="vi">
@@ -183,6 +192,90 @@ session_start();
             gap: 5px;
         }
 
+
+        /* New Feature Section Styles */
+        .feature-container {
+            max-width: 1200px;
+            margin: -60px auto 40px; /* Overlap hero slightly */
+            padding: 0 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1.8fr; /* Left smaller, Right larger */
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+
+        .feature-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .feature-item:hover {
+            transform: translateY(-3px);
+            color: #1877f2;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+            object-fit: contain;
+        }
+        
+        .feature-icon-i {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #1877f2;
+        }
+
+        .feature-label {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .feature-sub {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 60px;
+            background: #eee;
+        }
+
+        .section-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
     </style>
 </head>
 <body>
@@ -196,6 +289,42 @@ session_start();
         <a href="/listings.php" class="cta-button">Tìm Phòng Ngay</a>
     </div>
 </header>
+
+<!-- New Feature Section -->
+<div class="feature-container">
+    <div class="feature-grid">
+        <!-- Left Column: Buy/Rent -->
+        <div class="feature-card">
+            <a href="/index.php" class="feature-item">
+                <img src="/assets/2.svg" class="feature-icon" alt="Mua bán">
+                <span class="feature-label">Mua bán</span>
+                <span class="feature-sub"><?= number_format($postCount, 0, ',', '.') ?> tin</span>
+            </a>
+            <div class="divider"></div>
+            <a href="/listings.php" class="feature-item">
+                <img src="/assets/1.svg" class="feature-icon" alt="Cho thuê">
+                <span class="feature-label">Cho Thuê</span>
+                <span class="feature-sub"><?= number_format($listingCount, 0, ',', '.') ?> tin</span>
+            </a>
+        </div>
+
+        <!-- Right Column: Tools -->
+        <div class="feature-card" style="display: block;">
+            <div class="section-header">Công cụ tiện ích</div>
+            <div style="display: flex; justify-content: space-around; padding: 0 20px;">
+                <a href="/price_reference.php" class="feature-item">
+                    <i class="fa-solid fa-chart-column feature-icon-i" style="color: #333;"></i>
+                    <span class="feature-label">Biểu đồ giá</span>
+                </a>
+                <div class="divider"></div>
+                <a href="/news.php?category=Kinh+nghi%E1%BB%87m+thu%C3%AA+nh%C3%A0" class="feature-item">
+                    <i class="fa-solid fa-book-open feature-icon-i" style="color: #333;"></i>
+                    <span class="feature-label">Kinh nghiệm</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="container">
     <h2 class="section-title">Phòng Trọ Đề Xuất</h2>

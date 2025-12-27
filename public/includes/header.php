@@ -2,6 +2,77 @@
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
+
+if (!empty($_SESSION['user_id'])) {
+    require_once __DIR__ . '/../../config/db.php';
+    try {
+        $stmt = $pdo->prepare("SELECT is_active FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $userStatus = $stmt->fetch();
+
+        if ($userStatus && !$userStatus['is_active']) {
+            
+            ?>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Tài khoản bị khóa</title>
+                <style>
+                    body { margin: 0; padding: 0; font-family: sans-serif; background: rgba(0,0,0,0.5); height: 100vh; overflow: hidden; }
+                    .lockout-modal {
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                        text-align: center;
+                        z-index: 99999;
+                        width: 90%;
+                        max-width: 400px;
+                    }
+                    .lockout-icon {
+                        color: #dc3545;
+                        font-size: 48px;
+                        margin-bottom: 15px;
+                    }
+                    .lockout-btn {
+                        background: #dc3545;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 16px;
+                        margin-top: 20px;
+                    }
+                    .lockout-btn:hover { background: #c82333; }
+                </style>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            </head>
+            <body>
+                <div class="lockout-modal">
+                    <div class="lockout-icon"><i class="fa-solid fa-lock"></i></div>
+                    <h2 style="margin-top:0;">Tài khoản bị khóa</h2>
+                    <p>Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.</p>
+                    <button class="lockout-btn" onclick="window.location.href='/logout.php'">Xác nhận</button>
+                </div>
+            </body>
+            </html>
+            <?php
+            exit; 
+        }
+    } catch (PDOException $e) {
+        error_log("Auth Check Error: " . $e->getMessage());
+    }
+}
+
+
+
 $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 if (!function_exists('isActive')) {
     function isActive($path, $current) {
@@ -27,9 +98,11 @@ if (!function_exists('isActive')) {
         <?php if (!empty($_SESSION['user_id'])): 
             require_once __DIR__ . '/../../config/db.php';
             try {
-                $stmt = $pdo->prepare("SELECT username, full_name, avatar, is_landlord FROM users WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT username, full_name, avatar, is_landlord, is_active FROM users WHERE id = ?");
                 $stmt->execute([$_SESSION['user_id']]);
                 $headerUser = $stmt->fetch();
+
+
             } catch (PDOException $e) {
                 error_log("Header DB Error: " . $e->getMessage());
                 $headerUser = false;
@@ -86,6 +159,14 @@ if (!function_exists('isActive')) {
                 </div>
                 <div id="userDropdown" style="display:none; position:absolute; right:0; top:45px; background:white; color:black; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:280px; z-index:1000; overflow:hidden;">
                     <!-- Personal Info -->
+                    <!-- Admin Section -->
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                    <a href="/admin/index.php" style="display:block; padding:10px 15px; text-decoration:none; color:#d35400; font-weight:bold; transition:background 0.2s;">
+                        <i class="fa-solid fa-gauge-high" style="width:20px; text-align:center; margin-right:10px;"></i> Admin Dashboard
+                    </a>
+                    <div style="border-top:1px solid #eee;"></div>
+                    <?php endif; ?>
+
                     <a href="/profile.php" style="display:block; padding:10px 15px; text-decoration:none; color:#333; transition:background 0.2s;">
                         <i class="fa-solid fa-user" style="width:20px; text-align:center; margin-right:10px;"></i> Thông tin cá nhân
                     </a>
@@ -197,9 +278,14 @@ if (!function_exists('isActive')) {
             } else if (notif.type === 'damage_confirmed') {
                 link = '/manage_rentals.php?view=my_rentals&view_report=' + notif.reference_id;
             } else if (notif.type === 'contract_created') {
-                link = '/manage_rentals.php?view=contracts';
+                // Link for Tenant to sign
+                link = '/manage_rentals.php?view=my_rentals&action=view_contract&contract_id=' + notif.reference_id;
             } else if (notif.type === 'contract_signed') {
+                // Link for Owner to view
                 link = '/manage_rentals.php?view=contracts';
+            } else if (notif.type === 'contract_signed_confirm') {
+                 // Link for Tenant to view signed contract
+                 link = '/manage_rentals.php?view=my_rentals&action=view_contract&contract_id=' + notif.reference_id;
             } else if (notif.type === 'appliance_request') {
                 link = '/my_appliances.php';
             } else if (notif.type === 'appliance_approved') {
@@ -208,6 +294,8 @@ if (!function_exists('isActive')) {
                  link = '/appliances.php';
             } else if (notif.type === 'viewing_request' || notif.type === 'viewing_update') {
                  link = '/manage_rentals.php?view=viewings';
+            } else if (notif.type === 'new_report') {
+                 link = '/admin/reports.php';
             }
 
             

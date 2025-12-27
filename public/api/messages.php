@@ -138,5 +138,6 @@ try {
             jsonResponse(['error' => 'Invalid action'], 400);
     }
 } catch (Exception $e) {
+    file_put_contents(__DIR__ . '/../../debug_messages_error.log', date('Y-m-d H:i:s') . " Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString() . "\n", FILE_APPEND);
     jsonResponse(['error' => $e->getMessage()], 500);
 }

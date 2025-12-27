@@ -11,7 +11,7 @@ if (!$listingId) {
     exit;
 }
 
-// Fetch Listing Details
+
 $stmt = $pdo->prepare("
     SELECT l.*, u.full_name as owner_name, u.phone as owner_phone, u.avatar as owner_avatar
     FROM listings l
@@ -25,12 +25,12 @@ if (!$listing) {
     die("Phòng trọ không tồn tại.");
 }
 
-// Fetch Images
+
 $imgStmt = $pdo->prepare("SELECT file_path FROM listing_images WHERE listing_id = ?");
 $imgStmt->execute([$listingId]);
 $images = $imgStmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Fetch Recommendations (Same City, Different ID)
+
 $recStmt = $pdo->prepare("
     SELECT id, title, price, address, 
            (SELECT file_path FROM listing_images WHERE listing_id = listings.id AND is_cover = 1 LIMIT 1) as cover_image
@@ -41,7 +41,7 @@ $recStmt = $pdo->prepare("
 $recStmt->execute([$listing['city'] ?? '', $listingId]);
 $recommendations = $recStmt->fetchAll();
 
-// Current User Info for Form
+
 $user = null;
 if (isset($_SESSION['user_id'])) {
     $uStmt = $pdo->prepare("SELECT full_name, phone, email FROM users WHERE id = ?");
@@ -279,9 +279,24 @@ if (isset($_SESSION['user_id'])) {
 
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                 <h1 class="listing-title"><?= htmlspecialchars($listing['title'] ?? 'Không tiêu đề') ?></h1>
-                <button class="btn-favorite" id="favBtn" onclick="toggleFavorite(<?= $listingId ?>)">
-                    <i class="fa-regular fa-heart"></i>
-                </button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-favorite" id="favBtn" onclick="toggleFavorite(<?= $listingId ?>)" title="Yêu thích">
+                        <i class="fa-regular fa-heart"></i>
+                    </button>
+                    <!-- New Action Buttons -->
+                     <button class="btn-favorite" onclick="openModal('viewingModal')" title="Đặt lịch xem trọ">
+                        <i class="fa-regular fa-calendar-check" style="color: #0866ff;"></i>
+                    </button>
+                    <button class="btn-favorite" onclick="openModal('rentModal')" title="Yêu cầu thuê">
+                        <i class="fa-solid fa-file-contract" style="color: #0866ff;"></i>
+                    </button>
+                    <button class="btn-favorite" onclick="openModal('reportModal')" title="Báo cáo tin này" style="border-color: #e74c3c;">
+                        <i class="fa-solid fa-flag" style="color: #e74c3c;"></i>
+                    </button>
+                    <button class="btn-favorite" onclick="openModal('reportModal')" title="Báo cáo tin này" style="border-color: #e74c3c;">
+                        <i class="fa-solid fa-flag" style="color: #e74c3c;"></i>
+                    </button>
+                </div>
             </div>
             <div class="listing-price"><?= number_format($listing['price'] ?? 0) ?> đ/tháng</div>
             
@@ -302,8 +317,6 @@ if (isset($_SESSION['user_id'])) {
             </div>
             <?php endif; ?>
 
-
-
             <div style="margin-top: 30px;">
                 <h3 style="font-size: 1.2rem; border-bottom: 2px solid #0866ff; display: inline-block; padding-bottom: 5px;">Mô tả chi tiết</h3>
                 <div style="line-height: 1.6; color: #333;">
@@ -311,105 +324,189 @@ if (isset($_SESSION['user_id'])) {
                 </div>
             </div>
 
-            <!-- Host Info -->
-            <div style="margin-top: 30px; background: #e7f3ff; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
-                <img src="<?= htmlspecialchars($listing['owner_avatar'] ?? '/assets/default-avatar.png') ?>" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-                <div>
-                    <div style="font-weight: bold; font-size: 1.1rem;"><?= htmlspecialchars($listing['owner_name'] ?? 'Chủ nhà') ?></div>
-                    <div style="color: #666;">
-                        <i class="fa-solid fa-phone"></i> <?= htmlspecialchars($listing['owner_phone'] ?? 'Liên hệ chủ nhà') ?>
-                    </div>
-                </div>
-                <a href="tel:<?= htmlspecialchars($listing['owner_phone'] ?? '#') ?>" style="margin-left: auto; background: white; color: #0866ff; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">Gọi Ngay</a>
-            </div>
+            <!-- Host Info Moved to Right Sidebar -->
 
             <!-- Google Map -->
             <div style="margin-top: 30px;">
                 <h3 style="font-size: 1.2rem; border-bottom: 2px solid #0866ff; display: inline-block; padding-bottom: 5px;">Vị trí</h3>
                 <?php
                     $fullAddress = ($listing['address'] ?? '') . ', ' . ($listing['district'] ?? '') . ', ' . ($listing['city'] ?? '');
-                    // Use standard Google Maps Output Embed
                     $mapUrl = "https://maps.google.com/maps?q=" . urlencode($fullAddress) . "&output=embed";
                 ?>
                 <div style="width: 100%; height: 300px; border-radius: 8px; overflow: hidden; margin-top: 15px; border: 1px solid #ddd; position: relative;">
-                    <iframe 
-                        width="100%" 
-                        height="100%" 
-                        frameborder="0" 
-                        scrolling="no" 
-                        marginheight="0" 
-                        marginwidth="0" 
-                        src="<?= $mapUrl ?>">
-                    </iframe>
-                </div>
-                <div style="margin-top: 10px; text-align: right;">
-                    <a href="https://www.google.com/maps?q=<?= urlencode($fullAddress) ?>" target="_blank" style="color: #0866ff; font-weight: bold; text-decoration: none; font-size: 0.9rem;">
-                        <i class="fa-solid fa-map-location-dot"></i> Xem trên Google Maps
-                    </a>
+                    <iframe width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="<?= $mapUrl ?>"></iframe>
                 </div>
             </div>
 
         </div>
 
-        <!-- RIGHT: Booking Form / Map -->
+        <!-- RIGHT: Reviews (Replacing Booking Form) -->
         <div class="layout-right">
-             <div class="booking-form">
-                <div class="form-title">Gửi yêu cầu thuê</div>
-                <?php if (isset($_SESSION['user_id']) && $user): ?>
-                    <div class="form-group">
-                        <label class="form-label">Họ tên</label>
-                        <input type="text" value="<?= htmlspecialchars($user['full_name'] ?? '') ?>" readonly class="form-control">
-                    </div>
-                     <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" readonly class="form-control">
-                    </div>
-                    <form id="rentalRequestForm">
-                        <input type="hidden" name="listing_id" value="<?= $listingId ?>">
-                        <div class="form-group">
-                            <label class="form-label">Ngày bắt đầu</label>
-                            <input type="date" name="start_date" required class="form-control" min="<?= date('Y-m-d') ?>">
+             <!-- Host Info -->
+             <div style="background:white; border-radius:8px; padding:15px; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <img src="/<?= htmlspecialchars($listing['owner_avatar'] ?? 'assets/default-avatar.png') ?>" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd;">
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1rem; color: #333;"><?= htmlspecialchars($listing['owner_name'] ?? 'Chủ nhà') ?></div>
+                         <div style="color: #666; font-size: 0.9rem;">
+                            <i class="fa-solid fa-phone"></i> <?= htmlspecialchars($listing['owner_phone'] ?? '---') ?>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Thời hạn (tháng)</label>
-                            <input type="number" name="months" required min="1" value="12" class="form-control">
-                        </div>
-
-                        <button type="button" onclick="submitRentalRequest()" class="btn-submit">Gửi yêu cầu</button>
-                    </form>
-                <?php else: ?>
-                    <div class="login-prompt">
-                        <p>Bạn cần đăng nhập để gửi yêu cầu thuê.</p>
-                        <a href="/login.php" class="login-btn">Đăng nhập</a>
                     </div>
-                <?php endif; ?>
-
-                <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
-                
-                <h3 style="margin-top:0; font-size: 1.1rem;">Đặt lịch xem phòng</h3>
-                <?php if (isset($_SESSION['user_id'])): ?>
-                    <div style="margin-top: 15px;">
-                        <label style="display:block; margin-bottom:5px; font-weight:bold;">Chọn thời gian:</label>
-                        <input type="datetime-local" id="viewingTime" class="form-control" min="<?= date('Y-m-d\TH:i') ?>" style="margin-bottom: 10px;">
-                        <button onclick="bookViewing(<?= $listingId ?>)" class="btn-submit">Xét lịch</button>
-                    </div>
-                <?php else: ?>
-                    <p>Vui lòng <a href="/login.php">đăng nhập</a> để đặt lịch xem phòng.</p>
-                <?php endif; ?>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <a href="tel:<?= htmlspecialchars($listing['owner_phone'] ?? '#') ?>" style="flex: 1; text-align: center; background: #e7f3ff; color: #0866ff; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                        <i class="fa-solid fa-phone"></i> Gọi điện
+                    </a>
+                    <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] != $listing['owner_id']): ?>
+                    <button onclick="openChat(<?= $listing['owner_id'] ?>, '<?= htmlspecialchars($listing['owner_name'] ?? 'Chủ nhà', ENT_QUOTES) ?>', '/<?= htmlspecialchars($listing['owner_avatar'] ?? 'assets/default-avatar.png', ENT_QUOTES) ?>')" style="flex: 1; text-align: center; background: #0866ff; color: white; padding: 10px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
+                        <i class="fa-brands fa-facebook-messenger"></i> Nhắn tin
+                    </button>
+                    <?php endif; ?>
+                </div>
             </div>
+
+             <div style="background:white; border-radius:8px; padding:15px; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                <div style="font-weight:bold; font-size:1.1rem; margin-bottom:15px;">Bình luận</div>
+                
+                <div id="reviewsList" style="margin-bottom:15px; max-height:400px; overflow-y:auto;">
+                    <div style="text-align:center; color:#888; padding:20px;">
+                        <i class="fa-regular fa-comment-dots" style="font-size:2rem; margin-bottom:10px;"></i>
+                        <br>Chưa có bình luận nào.
+                    </div>
+                </div>
+
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <div style="border-top:1px solid #eee; padding-top:10px;">
+                        <div style="display:flex; align-items:center; margin-bottom:10px; gap:5px;">
+                            <span style="font-size:0.9rem;">Đánh giá:</span>
+                            <div class="star-rating">
+                                <i class="fa-regular fa-star" data-value="1"></i>
+                                <i class="fa-regular fa-star" data-value="2"></i>
+                                <i class="fa-regular fa-star" data-value="3"></i>
+                                <i class="fa-regular fa-star" data-value="4"></i>
+                                <i class="fa-regular fa-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        <input type="hidden" id="reviewRating" value="0">
+                        <textarea id="reviewComment" class="form-control" placeholder="Bình luận..." style="resize:none; height:60px; margin-bottom:10px;"></textarea>
+                        <button onclick="submitReview()" style="width:100%; border:none; background: #e4e6eb; padding:8px; border-radius:20px; font-weight:600; cursor:pointer; color:#050505;">
+                            <i class="fa-solid fa-paper-plane"></i> Gửi
+                        </button>
+                    </div>
+                <?php else: ?>
+                    <div style="background:#f0f2f5; padding:10px; text-align:center; border-radius:6px;">
+                        <a href="/login.php" style="color:#0866ff; font-weight:bold;">Đăng nhập</a> để bình luận.
+                    </div>
+                <?php endif; ?>
+             </div>
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- Modals -->
+    <!-- Viewing Modal -->
+    <div class="modal-overlay" id="viewingModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:white;width:100%;max-width:400px;border-radius:8px;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;">Đặt lịch xem trọ</h3>
+                <button onclick="closeModal('viewingModal')" style="border:none;background:none;font-size:1.5rem;cursor:pointer;">&times;</button>
+            </div>
+            
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <label style="display:block;margin-bottom:5px;">Chọn thời gian:</label>
+                <input type="datetime-local" id="viewingTime" class="form-control" min="<?= date('Y-m-d\TH:i') ?>" style="margin-bottom:15px;">
+                <button onclick="bookViewing(<?= $listingId ?>)" class="btn-submit">Xác nhận đặt lịch</button>
+            <?php else: ?>
+                 <p>Vui lòng <a href="/login.php">đăng nhập</a> để thực hiện.</p>
+            <?php endif; ?>
+        </div>
+    </div>
 
+    <!-- Rent Modal -->
+    <div class="modal-overlay" id="rentModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:white;width:100%;max-width:400px;border-radius:8px;padding:20px;">
+             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;">Yêu cầu thuê trọ</h3>
+                 <button onclick="closeModal('rentModal')" style="border:none;background:none;font-size:1.5rem;cursor:pointer;">&times;</button>
+            </div>
+
+            <?php if (isset($_SESSION['user_id'])): ?>
+                 <form id="rentalRequestForm">
+                    <input type="hidden" name="listing_id" value="<?= $listingId ?>">
+                    <div class="form-group">
+                        <label class="form-label">Ngày bắt đầu</label>
+                        <input type="date" name="start_date" required class="form-control" min="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Thời hạn (tháng)</label>
+                        <input type="number" name="months" required min="1" value="12" class="form-control">
+                    </div>
+                    <button type="button" onclick="submitRentalRequest()" class="btn-submit">Gửi yêu cầu</button>
+                </form>
+            <?php else: ?>
+                <p>Vui lòng <a href="/login.php">đăng nhập</a> để thực hiện.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div class="modal-overlay" id="reportModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:white;width:100%;max-width:400px;border-radius:8px;padding:20px;">
+             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0; color:#e74c3c;">Báo cáo vi phạm</h3>
+                 <button onclick="closeModal('reportModal')" style="border:none;background:none;font-size:1.5rem;cursor:pointer;">&times;</button>
+            </div>
+
+            <?php if (isset($_SESSION['user_id'])): ?>
+                 <form id="reportForm">
+                    <input type="hidden" name="target_type" value="listing">
+                    <input type="hidden" name="target_id" value="<?= $listingId ?>">
+                    <div class="form-group">
+                        <label class="form-label">Lý do</label>
+                        <select name="reason" class="form-control" required>
+                            <option value="">-- Chọn lý do --</option>
+                            <option value="Lừa đảo">Lừa đảo</option>
+                            <option value="Thông tin sai lệch">Thông tin sai lệch</option>
+                            <option value="Trùng lặp">Tin trùng lặp</option>
+                            <option value="Ngôn từ không phù hợp">Ngôn từ không phù hợp</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Chi tiết</label>
+                        <textarea name="details" class="form-control" rows="3" placeholder="Mô tả thêm..."></textarea>
+                    </div>
+                    <button type="button" onclick="submitReport()" class="btn-submit" style="background:#e74c3c;">Gửi báo cáo</button>
+                </form>
+            <?php else: ?>
+                <p>Vui lòng <a href="/login.php">đăng nhập</a> để báo cáo.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Footer & Chat Widget -->
+    <?php include __DIR__ . '/includes/footer.php'; ?>
     <script>
+        // Force update currentUserId in case footer.php failed or session state was ambiguous
+        window.currentUserId = <?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>;
+    </script>
+
+    <!-- JavaScript -->
+    <script src="/assets/js/main.js"></script>
+    <script>
+        // Modal functions
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
         async function bookViewing(listingId) {
             const time = document.getElementById('viewingTime').value;
             if (!time) {
                 alert('Vui lòng chọn thời gian!');
                 return;
             }
-
             try {
                 const res = await fetch('/api/rentals.php?action=schedule_viewing', {
                     method: 'POST',
@@ -418,30 +515,121 @@ if (isset($_SESSION['user_id'])) {
                 });
                 const result = await res.json();
                 if (result.success) {
-                    alert('Đã gửi yêu cầu xem phòng! Chủ nhà sẽ xác nhận sớm.');
+                    alert('Đã gửi yêu cầu xem phòng!');
+                    closeModal('viewingModal');
                 } else {
-                    alert('Lỗi: ' + (result.error || result.message || 'Không thể gửi yêu cầu'));
+                    alert('Lỗi: ' + (result.error || result.message));
                 }
-            } catch (e) {
-                console.error(e);
-                alert('Có lỗi xảy ra.');
-            }
+            } catch (e) { console.error(e); alert('Có lỗi xảy ra.'); }
         }
-    </script>
-    <script src="/assets/js/main.js"></script>
-    <script>
 
+        async function submitRentalRequest() {
+            const form = document.getElementById('rentalRequestForm');
+            const data = {
+                listing_id: form.listing_id.value,
+                start_date: form.start_date.value,
+                duration: form.months.value
+            };
+            // Call API (Demo)
+            alert('Đã gửi yêu cầu thuê (Mô phỏng)!');
+            closeModal('rentModal');
+        }
+
+        // Reviews
+        const stars = document.querySelectorAll('.star-rating i');
+        const ratingInput = document.getElementById('reviewRating');
+        
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const val = star.getAttribute('data-value');
+                ratingInput.value = val;
+                updateStars(val);
+            });
+        });
+
+        function updateStars(val) {
+            stars.forEach(s => {
+                if (s.getAttribute('data-value') <= val) {
+                    s.classList.remove('fa-regular');
+                    s.classList.add('fa-solid');
+                    s.style.color = '#f5c518';
+                } else {
+                    s.classList.remove('fa-solid');
+                    s.classList.add('fa-regular');
+                    s.style.color = 'black';
+                }
+            });
+        }
+
+        async function loadReviews() {
+            try {
+                // Fetch Listing Reviews (type=listing)
+                const res = await fetch(`/api/reviews.php?type=listing&listing_id=<?= $listingId ?>`);
+                const data = await res.json();
+                if (data.success) {
+                    const list = document.getElementById('reviewsList');
+                    if (data.reviews.length > 0) {
+                        list.innerHTML = data.reviews.map(r => `
+                            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                                <img src="/${r.reviewer_avatar || 'assets/default-avatar.png'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                                <div>
+                                    <div style="font-weight:bold; font-size:0.9rem;">${r.reviewer_name}</div>
+                                    <div style="color:#f5c518; font-size:0.8rem;">
+                                        ${'<i class="fa-solid fa-star"></i>'.repeat(r.rating)}
+                                    </div>
+                                    <div style="font-size:0.95rem; margin-top:2px;">${r.comment}</div>
+                                    <div style="font-size:0.8rem; color:#888;">${new Date(r.created_at).toLocaleDateString('vi-VN')}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        list.innerHTML = `
+                            <div style="text-align:center; color:#888; padding:20px;">
+                                <i class="fa-regular fa-comment-dots" style="font-size:2rem; margin-bottom:10px;"></i>
+                                <br>Chưa có bình luận nào cho phòng trọ này.
+                            </div>
+                        `;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function submitReview() {
+            const rating = ratingInput.value;
+            const comment = document.getElementById('reviewComment').value.trim();
+            if (!rating || rating == 0) { alert('Vui lòng chọn số sao!'); return; }
+            if (!comment) { alert('Vui lòng nhập bình luận!'); return; }
+
+            try {
+                const res = await fetch('/api/reviews.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        type: 'listing',
+                        listing_id: <?= $listingId ?>,
+                        rating: rating,
+                        comment: comment
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('reviewComment').value = '';
+                    loadReviews();
+                } else {
+                    alert(result.message);
+                }
+            } catch (e) { console.error(e); alert('Lỗi kết nối'); }
+        }
+
+        loadReviews();
+
+        // Carousel
         let slideIndex = 0;
         const slides = document.querySelectorAll('.carousel-slide');
         const thumbs = document.querySelectorAll('.img-thumb');
         
-        function moveSlide(n) {
-            showSlide(slideIndex += n);
-        }
-        
-        function currentSlide(n) {
-            showSlide(slideIndex = n);
-        }
+        function moveSlide(n) { showSlide(slideIndex += n); }
+        function currentSlide(n) { showSlide(slideIndex = n); }
         
         function showSlide(n) {
             if (n >= slides.length) slideIndex = 0;
@@ -455,18 +643,17 @@ if (isset($_SESSION['user_id'])) {
         }
 
         function toggleFavorite(id) {
-            alert('Tính năng đang phát triển!');
-        }
-        
-        async function submitRentalRequest() {
-            const form = document.getElementById('rentalRequestForm');
-            const data = {
-                listing_id: form.listing_id.value,
-                start_date: form.start_date.value,
-                duration: form.months.value
-            };
-            
-            alert('Đã gửi yêu cầu thuê (Demo)!');
+            // Implementation of Toggle Favorite
+            const btn = document.getElementById('favBtn');
+            btn.classList.toggle('active');
+            const icon = btn.querySelector('i');
+            if(btn.classList.contains('active')) {
+                icon.classList.remove('fa-regular');
+                icon.classList.add('fa-solid');
+            } else {
+                icon.classList.remove('fa-solid');
+                icon.classList.add('fa-regular');
+            }
         }
     </script>
 </body>

@@ -13,13 +13,13 @@ $action = $_GET['action'] ?? '';
 $userId = $_SESSION['user_id'];
 
 if ($action === 'send_otp') {
-    // Fetch user email
+    
     $stmtUser = $pdo->prepare("SELECT email FROM users WHERE id = ?");
     $stmtUser->execute([$userId]);
     $userRow = $stmtUser->fetch();
     $email = $userRow['email'] ?? null;
 
-    // Generate 6 digit OTP
+    
     $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
     $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
@@ -32,7 +32,7 @@ if ($action === 'send_otp') {
         $stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?");
         $stmt->execute([$otp, $expiry, $userId]);
 
-        // Send Email
+        
         require_once __DIR__ . '/../../helpers/mail.php';
         $subject = "Mã xác thực chủ trọ - Thuê Trọ Online";
         $body = "
@@ -46,12 +46,12 @@ if ($action === 'send_otp') {
         if (sendMail($email, $subject, $body)) {
              echo json_encode(['success' => true, 'message' => 'Mã OTP đã được gửi đến email ' . $email]);
         } else {
-             // Fallback or error
+             
              error_log("Failed to send OTP email to $email");
              echo json_encode(['success' => false, 'message' => 'Không thể gửi email. Vui lòng thử lại sau.']);
         }
 
-        // Keep logging for debug just in case mail fails and user needs access
+        
         $logFile = __DIR__ . '/../../public/otp_log.txt';
         $logEntry = "[" . date('Y-m-d H:i:s') . "] OTP for User ID $userId ($email): $otp\n";
         file_put_contents($logFile, $logEntry, FILE_APPEND);
@@ -76,12 +76,12 @@ if ($action === 'send_otp') {
 
         if ($user && $user['otp_code'] === $otp) {
             if (new DateTime() <= new DateTime($user['otp_expires_at'])) {
-                // Success
+                
                 $update = $pdo->prepare("UPDATE users SET is_landlord = 1, otp_code = NULL, otp_expires_at = NULL WHERE id = ?");
                 $update->execute([$userId]);
                 
-                // Update session if we store role there? currently we don't seem to store role in session, but we might want to reload it.
-                // We'll just trust the DB on next page load.
+                
+                
                 
                 echo json_encode(['success' => true, 'message' => 'Xác thực thành công! Bạn đã là chủ trọ.']);
             } else {

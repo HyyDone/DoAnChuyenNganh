@@ -7,10 +7,35 @@ require_login();
 $currentUid = (int) current_user_id();
 $profileUid = isset($_GET['id']) ? intval($_GET['id']) : $currentUid;
 
-// Fetch profile user
-$stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio,is_landlord FROM users WHERE id = ?");
+
+$stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio,is_landlord, created_at FROM users WHERE id = ?");
 $stmt->execute([$profileUid]);
 $user = $stmt->fetch();
+
+
+
+$stmtListings = $pdo->prepare("SELECT COUNT(*) FROM listings WHERE owner_id = ? AND status = 'available'");
+$stmtListings->execute([$profileUid]);
+$countListings = $stmtListings->fetchColumn();
+
+
+$stmtReviews = $pdo->prepare("SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM user_reviews WHERE reviewee_id = ?");
+$stmtReviews->execute([$profileUid]);
+$reviewStats = $stmtReviews->fetch(PDO::FETCH_ASSOC);
+$avgRating = $reviewStats['avg_rating'] ? round($reviewStats['avg_rating'], 1) : 0;
+$countReviews = $reviewStats['count'];
+
+
+$joinDate = new DateTime($user['created_at'] ?? 'now');
+$now = new DateTime();
+$interval = $now->diff($joinDate);
+$yearsActive = $interval->y;
+$monthsActive = $interval->m;
+$timeActiveStr = "";
+if ($yearsActive > 0) $timeActiveStr .= "$yearsActive năm ";
+if ($monthsActive > 0) $timeActiveStr .= "$monthsActive tháng";
+if (empty($timeActiveStr)) $timeActiveStr = "Mới tham gia";
+
 
 if (!$user) {
     die("Người dùng không tồn tại.");
@@ -21,7 +46,7 @@ $isOwner = ($currentUid === $profileUid);
 $errors = [];
 $success = null;
 
-// Only allow updates if owner
+
 if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $full = trim($_POST['full_name'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
@@ -43,7 +68,7 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = "Cập nhật thành công.";
     }
     
-    // Refresh user data
+    
     $stmt = $pdo->prepare("SELECT id,username,email,full_name,phone,avatar,bio FROM users WHERE id = ?");
     $stmt->execute([$profileUid]);
     $user = $stmt->fetch();
@@ -313,6 +338,26 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 15px;
             cursor: pointer;
         }
+
+        /* Stats Box */
+        .stats-container {
+            max-width: 940px;
+            margin: 16px auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding: 0 16px;
+        }
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .stat-label { color: #65676b; font-size: 0.9rem; margin-bottom: 5px; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #050505; }
+        .stat-sub { font-size: 0.8rem; color: #65676b; margin-top: 5px; }
     </style>
 </head>
 
@@ -355,7 +400,37 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button class="edit-profile-btn" onclick="openChat(<?= $user['id'] ?>, '<?= htmlspecialchars($user['full_name'] ?: $user['username'], ENT_QUOTES) ?>', '<?= htmlspecialchars($user['avatar'] ?? '', ENT_QUOTES) ?>')">
                     <i class="fa-brands fa-facebook-messenger"></i> Nhắn tin
                 </button>
+                <button class="edit-profile-btn" onclick="openUserReviewModal()" style="margin-left:10px; background:#fff5e4; color:#f5c518;">
+                    <i class="fa-solid fa-star"></i> Đánh giá người dùng
+                </button>
             <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-label">Thời gian hoạt động</div>
+            <div class="stat-value"><?= !empty($yearsActive) && $yearsActive > 0 ? $yearsActive . ' năm' : 'Mới' ?></div>
+            <div class="stat-sub"><?= htmlspecialchars($timeActiveStr) ?></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Đã giao dịch</div>
+            <div class="stat-value">--</div>
+            <div class="stat-sub">Chưa có giao dịch</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Tin hiện có</div>
+            <div class="stat-value"><?= $countListings ?> tin</div>
+            <div class="stat-sub"><a href="#" style="text-decoration:none; color:#1877f2;">Xem tất cả</a></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Đánh giá</div>
+            <div class="stat-value">
+                <?= $avgRating > 0 ? $avgRating : '--' ?> 
+                <i class="fa-solid fa-star" style="color:#f5c518; font-size:1.2rem;"></i>
+            </div>
+            <div class="stat-sub"><?= !empty($countReviews) && $countReviews > 0 ? "$countReviews đánh giá" : "Chưa có đánh giá" ?></div>
         </div>
     </div>
 
@@ -396,8 +471,14 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <!-- Placeholder for posts or other content -->
+        <!-- Placeholder for posts or other content -->
         <div style="flex: 2;">
-            <!-- Posts would go here -->
+            <div style="background:white; border-radius:8px; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Đánh giá từ người dùng</h3>
+                <div id="userReviewsList">
+                   <div style="text-align:center; color:#888; padding:20px;">Đang tải...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -550,7 +631,129 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 closeEditModal();
             }
         });
+        async function openUserReviewModal() {
+            document.getElementById('userReviewModal').classList.add('active');
+        }
+
+        async function submitUserReview() {
+            const rating = document.getElementById('userRating').value;
+            const comment = document.getElementById('userComment').value;
+            
+            if (!rating || rating == 0) { alert('Vui lòng chọn số sao!'); return; }
+            if (!comment) { alert('Vui lòng nhập nội dung đánh giá!'); return; }
+
+            try {
+                const res = await fetch('/api/reviews.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        type: 'user',
+                        reviewee_id: <?= $profileUid ?>,
+                        rating: rating,
+                        comment: comment
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Cảm ơn phản hồi của bạn!');
+                    document.getElementById('userReviewModal').classList.remove('active');
+                    loadUserReviews();
+                    location.reload(); // Reload to update stats
+                } else {
+                    alert(result.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Lỗi kết nối');
+            }
+        }
+
+        async function loadUserReviews() {
+            try {
+                const res = await fetch(`/api/reviews.php?type=user&user_id=<?= $profileUid ?>`);
+                const data = await res.json();
+                if (data.success) {
+                    const list = document.getElementById('userReviewsList');
+                    if (data.reviews.length > 0) {
+                        list.innerHTML = data.reviews.map(r => `
+                            <div style="border-bottom:1px solid #eee; padding:15px 0;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                                    <img src="/${r.reviewer_avatar || 'assets/default-avatar.png'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                                    <div style="font-weight:bold;">${r.reviewer_name}</div>
+                                    <div style="color:#f5c518;">
+                                        ${'<i class="fa-solid fa-star"></i>'.repeat(r.rating)}
+                                    </div>
+                                </div>
+                                <div style="color:#333; margin-top:5px;">${r.comment}</div>
+                                <div style="font-size:0.8rem; color:#888; margin-top:5px;">${new Date(r.created_at).toLocaleDateString('vi-VN')}</div>
+                            </div>
+                        `).join('');
+                    } else {
+                        list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Chưa có đánh giá nào.</div>';
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        loadUserReviews();
+
     </script>
+
+<!-- User Review Modal -->
+<div class="modal-overlay" id="userReviewModal">
+    <div class="modal-box" style="max-width:500px; width: 100%;">
+        <div class="modal-header">
+            <h3>Đánh giá người dùng</h3>
+            <div class="close-btn" onclick="document.getElementById('userReviewModal').classList.remove('active')">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div style="text-align:center; margin-bottom:20px;">
+                <div class="user-star-rating" style="font-size:2rem; cursor:pointer;">
+                    <i class="fa-regular fa-star" data-value="1"></i>
+                    <i class="fa-regular fa-star" data-value="2"></i>
+                    <i class="fa-regular fa-star" data-value="3"></i>
+                    <i class="fa-regular fa-star" data-value="4"></i>
+                    <i class="fa-regular fa-star" data-value="5"></i>
+                </div>
+                <input type="hidden" id="userRating" value="0">
+            </div>
+            <textarea id="userComment" class="form-control" placeholder="Nhập nội dung đánh giá..." style="min-height:100px; margin-bottom:15px; width: 100%; box-sizing: border-box;"></textarea>
+            <button onclick="submitUserReview()" class="save-btn" style="width: 100%;">Gửi đánh giá</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Star Rating Logic
+        const userStars = document.querySelectorAll('.user-star-rating i');
+        const userRatingInput = document.getElementById('userRating');
+        
+        if(userStars.length > 0) {
+            userStars.forEach(star => {
+                star.addEventListener('click', () => {
+                    const val = star.getAttribute('data-value');
+                    userRatingInput.value = val;
+                    
+                    userStars.forEach(s => {
+                        if (s.getAttribute('data-value') <= val) {
+                            s.classList.remove('fa-regular');
+                            s.classList.add('fa-solid');
+                            s.style.color = '#f5c518';
+                        } else {
+                            s.classList.remove('fa-solid');
+                            s.classList.add('fa-regular');
+                            s.style.color = '#ccc';
+                        }
+                    });
+                });
+            });
+        }
+    });
+</script>
 </body>
+
 
 </html>

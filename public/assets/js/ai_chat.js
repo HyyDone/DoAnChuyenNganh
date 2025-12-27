@@ -110,7 +110,7 @@ function handleChatFilesObj(files) {
                 container.id = 'aiChatPreviewContainer';
                 container.style.display = 'flex';
                 container.style.flexWrap = 'wrap';
-                previewBox.appendChild(container); // Clear old simple img if any
+                previewBox.appendChild(container); 
                 const oldImg = document.getElementById('aiChatPreviewImg');
                 if (oldImg) oldImg.style.display = 'none';
                 const oldRem = document.querySelector('.chat-preview-remove:not(.chat-preview-item .chat-preview-remove)');

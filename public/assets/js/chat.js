@@ -14,7 +14,7 @@ function openChat(userId, userFullname = '', userAvatar = '') {
     const chatPopup = document.getElementById('chatPopup');
 
     if (chatPopup.classList.contains('active') && currentChatUserId === userId) {
-        document.getElementById('chatInput').focus();
+        document.getElementById('humanChatInput').focus();
         return;
     }
 
@@ -32,7 +32,7 @@ function openChat(userId, userFullname = '', userAvatar = '') {
     if (chatPollingInterval) clearInterval(chatPollingInterval);
     chatPollingInterval = setInterval(() => loadChatHistory(userId, true), CHAT_POLL_INTERVAL);
 
-    document.getElementById('chatInput').focus();
+    document.getElementById('humanChatInput').focus();
 }
 
 function closeChat() {
@@ -84,7 +84,8 @@ function renderMessages(messages) {
 
     messages.forEach(msg => {
         const div = document.createElement('div');
-        const isMine = msg.sender_id == myId;
+        
+        const isMine = String(msg.sender_id) === String(myId);
         div.className = `message-bubble ${isMine ? 'message-sent' : 'message-received'}`;
 
         let html = '';
@@ -111,7 +112,8 @@ function scrollToBottom() {
 }
 
 async function sendMessage() {
-    const input = document.getElementById('chatInput');
+    console.log('Send button clicked');
+    const input = document.getElementById('humanChatInput');
     const fileInput = document.getElementById('chatImageInput');
     const content = input.value.trim();
     const file = fileInput && fileInput.files[0];

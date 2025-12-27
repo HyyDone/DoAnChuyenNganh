@@ -14,12 +14,12 @@ $category = isset($_GET['category']) ? $_GET['category'] : null;
 $newsList = [];
 
 try {
-    // Pagination Setup
+    
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $limit = 10;
     $offset = ($page - 1) * $limit;
     
-    // Count Total
+    
     if ($category) {
         $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM news WHERE category = ?");
         $stmtCount->execute([$category]);
@@ -29,7 +29,7 @@ try {
     $totalItems = $stmtCount->fetchColumn();
     $totalPages = ceil($totalItems / $limit);
 
-    // Get Data
+    
     if ($category) {
         $stmtList = $pdo->prepare("SELECT * FROM news WHERE category = :category ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
         $stmtList->bindParam(':limit', $limit, PDO::PARAM_INT);

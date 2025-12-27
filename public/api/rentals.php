@@ -42,10 +42,12 @@ try {
                 SELECT l.*, b.id as booking_id,
                        (SELECT file_path FROM listing_images WHERE listing_id = l.id AND is_cover = 1 LIMIT 1) as cover_image,
                        b.status as booking_status, b.start_date, b.end_date,
-                       u.full_name as owner_name, u.phone as owner_phone
+                       u.full_name as owner_name, u.phone as owner_phone,
+                       c.id as contract_id, c.status as contract_status
                 FROM bookings b
                 JOIN listings l ON b.listing_id = l.id
                 JOIN users u ON l.owner_id = u.id
+                LEFT JOIN contracts c ON b.id = c.booking_id
                 WHERE b.tenant_id = ? AND b.status IN ('confirmed', 'pending')
                 ORDER BY b.created_at DESC
             ");
@@ -522,6 +524,11 @@ try {
             $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'contract_signed', ?, ?)");
             $msg = "Người thuê đã XÁC NHẬN hợp đồng thuê phòng '{$contract['title']}'.";
             $nStmt->execute([$contract['owner_id'], $id, $msg]);
+            
+            
+            $nStmt2 = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'contract_signed_confirm', ?, ?)");
+            $msg2 = "Bạn đã ký thành công hợp đồng thuê phòng '{$contract['title']}'. Hợp đồng đã có hiệu lực.";
+            $nStmt2->execute([$userId, $id, $msg2]);
 
             echo json_encode(['success' => true]);
             break;
@@ -561,7 +568,7 @@ try {
 
             if (!$listingId || !$time) throw new Exception('Missing required fields');
 
-            // Get Owner ID
+            
             $stmt = $pdo->prepare("SELECT owner_id, title FROM listings WHERE id = ?");
             $stmt->execute([$listingId]);
             $listing = $stmt->fetch();
@@ -572,7 +579,7 @@ try {
             $ins->execute([$listingId, $userId, $listing['owner_id'], $time]);
             $apptId = $pdo->lastInsertId();
 
-            // Notify Owner
+            
             $nStmt = $pdo->prepare("INSERT INTO notifications (user_id, type, reference_id, message) VALUES (?, 'viewing_request', ?, ?)");
             $msg = "Có người muốn xem phòng '{$listing['title']}' vào lúc " . date('H:i d/m/Y', strtotime($time));
             $nStmt->execute([$listing['owner_id'], $apptId, $msg]);
@@ -689,7 +696,7 @@ try {
             break;
 
         case 'get_active_rentals_for_stats':
-            // Fetch active rentals for dropdown (only confirmed bookings)
+            
             $stmt = $pdo->prepare("
                 SELECT b.id as booking_id, l.title, l.price, u.full_name as tenant_name
                 FROM bookings b
@@ -705,10 +712,10 @@ try {
 
         case 'get_payment_stats':
             $year = $_GET['year'] ?? date('Y');
-            $month = $_GET['month'] ?? 0; // 0 means all months of the year
+            $month = $_GET['month'] ?? 0; 
             
-            // Build query for rental_payments using payment_for_month
-            // We use COALESCE to fallback to payment_date if payment_for_month is null (for old records)
+            
+            
             $col = "COALESCE(payment_for_month, payment_date)";
             
             $sql = "
@@ -729,9 +736,9 @@ try {
             
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
-            $stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // [month => total]
+            $stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); 
             
-            // Fill missing months with 0
+            
             $result = [];
             for ($i = 1; $i <= 12; $i++) {
                 if ($month > 0 && $month != $i) continue;
@@ -750,17 +757,17 @@ try {
             $amount = $data['amount'] ?? 0;
             $date = $data['date'] ?? date('Y-m-d');
             $note = $data['note'] ?? '';
-            // New field: payment_for_month (format YYYY-MM) -> convert to YYYY-MM-01
+            
             $forMonth = $data['payment_for_month'] ?? null; 
             if ($forMonth) {
-                $forMonth .= '-01'; // Append day 1
+                $forMonth .= '-01'; 
             } else {
-                $forMonth = $date; // Default to payment date if empty
+                $forMonth = $date; 
             }
 
             if (!$bookingId || !$amount) throw new Exception('Missing required fields');
 
-            // Verify owner
+            
             $check = $pdo->prepare("
                 SELECT l.owner_id 
                 FROM bookings b 

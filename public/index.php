@@ -1132,18 +1132,31 @@ if (isset($_SESSION['user_id'])) {
                 const displayName = post.full_name ? post.full_name : post.username;
                 // Check if current user owns the post
                 const isOwner = post.user_id == <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
-                const menuHtml = isOwner ? `
+                const isLoggedIn = <?= json_encode(isset($_SESSION['user_id'])) ?>;
+                
+                let menuItems = '';
+                if (isOwner) {
+                    menuItems += `
+                        <div class="menu-item" onclick="editPost(${JSON.stringify(post).replace(/"/g, '&quot;')})" style="padding: 8px 16px; cursor: pointer; transition: background 0.2s;">
+                            <i class="fa-solid fa-pen" style="margin-right: 8px;"></i> Chỉnh sửa
+                        </div>
+                        <div class="menu-item" onclick="confirmDeletePost(${post.id})" style="padding: 8px 16px; cursor: pointer; transition: background 0.2s; color: #dc3545;">
+                            <i class="fa-solid fa-trash" style="margin-right: 8px;"></i> Xóa
+                        </div>`;
+                } else if (isLoggedIn) {
+                    menuItems += `
+                        <div class="menu-item" onclick="openReportModal('post', ${post.id})" style="padding: 8px 16px; cursor: pointer; transition: background 0.2s; color: #e74c3c;">
+                            <i class="fa-solid fa-flag" style="margin-right: 8px;"></i> Báo cáo
+                        </div>`;
+                }
+
+                const menuHtml = menuItems ? `
                     <div class="post-menu-container" style="position: relative; margin-left: auto;">
                         <div class="post-menu-trigger" onclick="togglePostMenu(${post.id})" style="cursor: pointer; padding: 8px;">
                             <i class="fa-solid fa-ellipsis"></i>
                         </div>
                         <div class="post-menu-dropdown" id="post-menu-${post.id}" style="display: none; position: absolute; right: 0; top: 100%; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border-radius: 8px; z-index: 10; min-width: 150px; overflow: hidden;">
-                            <div class="menu-item" onclick="editPost(${JSON.stringify(post).replace(/"/g, '&quot;')})" style="padding: 8px 16px; cursor: pointer; transition: background 0.2s;">
-                                <i class="fa-solid fa-pen" style="margin-right: 8px;"></i> Chỉnh sửa
-                            </div>
-                            <div class="menu-item" onclick="confirmDeletePost(${post.id})" style="padding: 8px 16px; cursor: pointer; transition: background 0.2s; color: #dc3545;">
-                                <i class="fa-solid fa-trash" style="margin-right: 8px;"></i> Xóa
-                            </div>
+                            ${menuItems}
                         </div>
                     </div>
                 ` : '';
@@ -1246,11 +1259,15 @@ if (isset($_SESSION['user_id'])) {
                         </div>
 
                         <div class="comments-section" id="comments-${post.id}" style="display: none; padding: 0 16px 16px;">
-                            <div class="comment-input-area" style="display: flex; gap: 8px; margin-top: 12px;">
-                                <img src="/<?= htmlspecialchars(($currentUser && isset($currentUser['avatar'])) ? $currentUser['avatar'] : 'assets/default-avatar.png') ?>" class="user-avatar" style="width: 32px; height: 32px;">
-                                <div style="flex: 1; position: relative;">
+                            <div class="comment-input-area" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                                <img src="/<?= htmlspecialchars(($currentUser && isset($currentUser['avatar'])) ? $currentUser['avatar'] : 'assets/default-avatar.png') ?>" class="user-avatar" style="width: 32px; height: 32px; margin-right: 0;">
+                                <div style="flex: 1; position: relative; display: flex; align-items: center;">
                                     <input type="text" id="comment-input-${post.id}" class="comment-input-box" placeholder="Viết bình luận..." 
+                                        style="padding-right: 36px;"
                                         onkeydown="handleCommentKey(event, ${post.id})">
+                                    <span onclick="submitComment(${post.id})" style="position: absolute; right: 12px; cursor: pointer; color: var(--primary-color); display: flex; align-items: center;">
+                                        <i class="fa-regular fa-paper-plane" onmouseover="this.classList.replace('fa-regular', 'fa-solid')" onmouseout="this.classList.replace('fa-solid', 'fa-regular')"></i>
+                                    </span>
                                 </div>
                             </div>
                             <div class="comments-list" id="comments-list-${post.id}" style="margin-top: 12px;"></div>
@@ -1304,6 +1321,11 @@ if (isset($_SESSION['user_id'])) {
                 if (list.innerHTML === '') {
                     loadComments(postId);
                 }
+                // Focus input
+                 setTimeout(() => {
+                    const input = document.getElementById(`comment-input-${postId}`);
+                    if(input) input.focus();
+                 }, 100);
             } else {
                 section.style.display = 'none';
             }
@@ -1350,7 +1372,7 @@ if (isset($_SESSION['user_id'])) {
             
             wrapper.innerHTML = `
                 <div style="display: flex; gap: 8px;">
-                    <img src="/${comment.avatar || 'assets/default-avatar.png'}" class="user-avatar" style="width: 32px; height: 32px;">
+                    <img src="/${comment.avatar || 'assets/default-avatar.png'}" class="user-avatar" style="width: 32px; height: 32px; margin-right: 0;">
                     <div style="flex: 1;">
                         <div style="background: #f0f2f5; padding: 8px 12px; border-radius: 18px; display: inline-block;">
                             <div style="font-weight: 600; font-size: 0.9rem;"><a href="/profile.php?id=${comment.user_id}" style="color:inherit;text-decoration:none;">${escapeHtml(displayName)}</a></div>
@@ -1390,14 +1412,19 @@ if (isset($_SESSION['user_id'])) {
             replyBox.style.gap = '8px';
             
             replyBox.innerHTML = `
-                <img src="/<?= htmlspecialchars(($currentUser && isset($currentUser['avatar'])) ? $currentUser['avatar'] : 'assets/default-avatar.png') ?>" class="user-avatar" style="width: 24px; height: 24px;">
+                <img src="/<?= htmlspecialchars(($currentUser && isset($currentUser['avatar'])) ? $currentUser['avatar'] : 'assets/default-avatar.png') ?>" class="user-avatar" style="width: 24px; height: 24px; margin-right: 0; margin-top: 6px;">
                 <div style="flex: 1;">
-                    <input type="text" id="inline-reply-input-${commentId}" class="comment-input-box" 
-                        placeholder="Trả lời ${escapeHtml(username)}..." 
-                        style="font-size: 0.9rem; padding: 6px 10px;"
-                        onkeydown="handleInlineReply(event, ${postId}, ${commentId})">
-                    <div style="font-size: 0.8rem; margin-top: 4px; color: var(--secondary-text);">
-                        Nhấn Enter để đăng. <span style="cursor: pointer; color: var(--primary-color);" onclick="this.closest('#reply-box-${postId}').remove()">Hủy</span>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="text" id="inline-reply-input-${commentId}" class="comment-input-box" 
+                            placeholder="Trả lời ${escapeHtml(username)}..." 
+                            style="font-size: 0.9rem; padding: 8px 36px 8px 12px; height: 36px;"
+                            onkeydown="handleInlineReply(event, ${postId}, ${commentId})">
+                        <span onclick="submitReply(${postId}, ${commentId})" style="position: absolute; right: 12px; cursor: pointer; color: var(--primary-color); display: flex; align-items: center;">
+                             <i class="fa-regular fa-paper-plane" onmouseover="this.classList.replace('fa-regular', 'fa-solid')" onmouseout="this.classList.replace('fa-solid', 'fa-regular')"></i>
+                        </span>
+                    </div>
+                    <div style="font-size: 0.8rem; margin-top: 4px; color: var(--secondary-text); margin-left: 4px;">
+                        <span style="cursor: pointer; color: var(--text-color); font-weight: 500;" onclick="this.closest('#reply-box-${postId}').remove()">Hủy</span>
                     </div>
                 </div>
             `;
@@ -1406,61 +1433,75 @@ if (isset($_SESSION['user_id'])) {
             
             const input = document.getElementById(`inline-reply-input-${commentId}`);
             input.focus();
+            // Just focus, usually don't need to pre-fill @name unless desired. 
+            // User requested UI change, not behavior change, but typically "Trả lời X" placeholder is enough.
+            // But let's keep the user reference if it was there? 
+            // The previous code did: input.value = `@${username} `;
+            // I'll keep it for continuity but maybe it's better without if we have threaded replis.
+            // Let's keep it.
             input.value = `@${username} `;
         }
 
         async function handleInlineReply(event, postId, parentId) {
             if (event.key === 'Enter') {
-                const input = event.target;
-                const content = input.value.trim();
-                if (!content) return;
+                await submitReply(postId, parentId);
+            }
+        }
+
+        async function submitReply(postId, parentId) {
+            const input = document.getElementById(`inline-reply-input-${parentId}`);
+            const content = input.value.trim();
+            if (!content) return;
+            
+            try {
+                const response = await fetch('/api/interact.php?action=comment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        post_id: postId, 
+                        content: content,
+                        parent_id: parentId
+                    })
+                });
+                const result = await response.json();
                 
-                try {
-                    const response = await fetch('/api/interact.php?action=comment', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            post_id: postId, 
-                            content: content,
-                            parent_id: parentId
-                        })
-                    });
-                    const result = await response.json();
-                    
-                    if (result.ok) {
-                        input.closest(`#reply-box-${postId}`).remove();
-                        loadComments(postId); // Reload to show new comment
-                    }
-                } catch (error) {
-                    console.error('Error posting reply:', error);
+                if (result.ok) {
+                    input.closest(`#reply-box-${postId}`).remove();
+                    loadComments(postId); // Reload
                 }
+            } catch (error) {
+                console.error('Error posting reply:', error);
             }
         }
 
         async function handleCommentKey(event, postId) {
             if (event.key === 'Enter') {
-                const input = event.target;
-                const content = input.value.trim();
-                if (!content) return;
+                await submitComment(postId);
+            }
+        }
+
+        async function submitComment(postId) {
+            const input = document.getElementById(`comment-input-${postId}`);
+            const content = input.value.trim();
+            if (!content) return;
+            
+            try {
+                const response = await fetch('/api/interact.php?action=comment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        post_id: postId, 
+                        content: content
+                    })
+                });
+                const result = await response.json();
                 
-                try {
-                    const response = await fetch('/api/interact.php?action=comment', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            post_id: postId, 
-                            content: content
-                        })
-                    });
-                    const result = await response.json();
-                    
-                    if (result.ok) {
-                        input.value = '';
-                        loadComments(postId);
-                    }
-                } catch (error) {
-                    console.error('Error posting comment:', error);
+                if (result.ok) {
+                    input.value = '';
+                    loadComments(postId);
                 }
+            } catch (error) {
+                console.error('Error posting comment:', error);
             }
         }
 
@@ -1597,6 +1638,81 @@ if (isset($_SESSION['user_id'])) {
         Đăng post thành công
     </div>
     
+    <!-- Report Modal -->
+    <div class="modal-overlay" id="reportPostModal" style="display:none;">
+        <div class="modal-box" style="max-width:400px; padding:20px;">
+             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0; color:#e74c3c;">Báo cáo bài viết</h3>
+                 <span onclick="closeReportModal()" style="font-size:1.5rem;cursor:pointer;">&times;</span>
+            </div>
+             <form id="reportPostForm">
+                <input type="hidden" name="target_type" id="reportTargetType" value="post">
+                <input type="hidden" name="target_id" id="reportTargetId">
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600;">Lý do</label>
+                    <select name="reason" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;" required>
+                        <option value="">-- Chọn lý do --</option>
+                        <option value="Spam">Spam</option>
+                        <option value="Lừa đảo">Lừa đảo</option>
+                        <option value="Ngôn từ đả kích">Ngôn từ đả kích</option>
+                        <option value="Thông tin sai lệch">Thông tin sai lệch</option>
+                        <option value="Khác">Khác</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                     <label style="display:block; margin-bottom:5px; font-weight:600;">Chi tiết</label>
+                    <textarea name="details" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; resize:vertical; min-height:80px;" placeholder="Mô tả thêm..."></textarea>
+                </div>
+                <button type="button" onclick="submitPostReport()" style="width:100%; background:#e74c3c; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Gửi báo cáo</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+    function openReportModal(type, id) {
+        document.getElementById('reportTargetType').value = type;
+        document.getElementById('reportTargetId').value = id;
+        document.getElementById('reportPostModal').style.display = 'flex';
+        // Close menu if open
+        document.querySelectorAll('.post-menu-dropdown').forEach(d => d.style.display = 'none');
+    }
+    
+    function closeReportModal() {
+        document.getElementById('reportPostModal').style.display = 'none';
+        document.getElementById('reportPostForm').reset();
+    }
+    
+    async function submitPostReport() {
+        const form = document.getElementById('reportPostForm');
+        const reason = form.reason.value;
+        const details = form.details.value;
+        const type = form.target_type.value;
+        const id = form.target_id.value;
+        
+        if (!reason) { alert('Vui lòng chọn lý do!'); return; }
+
+        try {
+            const res = await fetch('/api/submit_report.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    target_type: type,
+                    target_id: id,
+                    reason: reason,
+                    details: details
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert('Báo cáo đã được gửi.');
+                closeReportModal();
+            } else {
+                alert(result.message);
+            }
+        } catch (e) { console.error(e); alert('Lỗi kết nối'); }
+    }
+    </script>
+
     <?php include __DIR__ . '/includes/footer.php'; ?>
 </body>
 

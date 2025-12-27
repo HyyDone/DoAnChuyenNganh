@@ -4,22 +4,22 @@ require_once __DIR__ . '/../../helpers/upload.php';
 require_once __DIR__ . '/../../helpers/CityNormalizer.php';
 
 session_start();
-// [DEBUG] Disable on-screen error reporting to prevent JSON corruption
+
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
-// Increase script execution time to handle slow AI responses
+
 set_time_limit(120);
 
-// [DEBUG] Custom Logger
+
 function debug_log($message) {
     $logFile = __DIR__ . '/../../debug_ai_chat.log';
     $time = date('Y-m-d H:i:s');
     file_put_contents($logFile, "[$time] $message" . PHP_EOL, FILE_APPEND);
 }
 
-// [DEBUG] Catch fatal errors
+
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_COMPILE_ERROR)) {
@@ -40,14 +40,14 @@ try {
     $userId = $_SESSION['user_id'] ?? null;
     $uploadedImagePaths = [];
 
-    // Process Image Uploads
+    
     if (!empty($_FILES['images'])) {
         debug_log("FILES['images'] detected: " . print_r($_FILES['images'], true));
         
         $targetDir = __DIR__ . '/../../public/uploads/ai_generated/';
         if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
 
-        // Check if multiple files are uploaded (standard for 'images[]')
+        
         if (is_array($_FILES['images']['name'])) {
             $count = count($_FILES['images']['name']);
             for ($i = 0; $i < $count; $i++) {
@@ -71,7 +71,7 @@ try {
                 }
             }
         } else {
-            // Fallback for single file if somehow not array
+            
             $uploadResult = upload_avatar($_FILES['images'], $targetDir);
             if (isset($uploadResult['path'])) {
                 $uploadedImagePaths[] = str_replace('uploads/avatars/', 'uploads/ai_generated/', $uploadResult['path']);
@@ -84,7 +84,7 @@ try {
         debug_log("No FILES['images'] found.");
     }
     
-    // ... (rest of mulitple image upload logic)
+    
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = [];
@@ -219,12 +219,11 @@ function constructSystemPrompt($listingsData, $imagePaths) {
     }
 
 
-    $base .= "LƯU Ý: Nếu không rõ ý định, hãy hỏi lại người dùng thay vì tự động thực hiện hành động.";
-    
-    if (!empty($imagePaths)) {
-        $count = count($imagePaths);
-        $base .= "\nNgười dùng ĐÃ GỬI kèm {$count} hình ảnh. Đường dẫn ảnh đầu tiên: {$imagePaths[0]}. Nếu bài viết/tin đăng cần 1 ảnh, hãy dùng ảnh này. Nếu cần nhiều ảnh, hệ thống đã lưu tất cả.\n";
-    }
+    $base .= "QUY TẮC TUYỆT ĐỐI (CRITICAL):\n";
+    $base .= " - KHI THỰC HIỆN HÀNH ĐỘNG (Search, Create Post, Create Listing), BẮT BUỘC PHẢI TRẢ VỀ JSON DUY NHẤT.\n";
+    $base .= " - KHÔNG BAO GIỜ trả lời bằng văn bản kiểu 'Tôi đã tạo tin...', 'Đã đăng thành công...'. HỆ THỐNG sẽ tự thông báo cho người dùng sau khi nhận được JSON từ bạn.\n";
+    $base .= " - Nếu người dùng yêu cầu tạo NHIỀU tin cùng lúc, HÃY CHỈ TẠO TIN ĐẦU TIÊN bằng JSON. Sau đó người dùng sẽ yêu cầu tiếp.\n";
+    $base .= " - NẾU KHÔNG CÓ JSON, HÀNH ĐỘNG SẼ KHÔNG ĐƯỢC THỰC HIỆN.\n\n";
 
     return $base;
 }
@@ -245,7 +244,7 @@ function callOllama($message, $history, $systemPrompt) {
         'model' => 'qwen2.5:3b',
         'messages' => $messages,
         'stream' => false,
-        // 'format' => 'json', // [MODIFIED] Disabled to allow plain text responses for greeting/consultation
+        
         'options' => ['temperature' => 0.5]
     ];
 
@@ -278,7 +277,7 @@ function sendHttpRequest($url, $method, $data = []) {
     
     $context  = stream_context_create($opts);
     
-    // Use fopen instead of file_get_contents to avoid $http_response_header deprecation
+    
     $stream = @fopen($url, 'r', false, $context);
     
     if ($stream === false) {
@@ -335,14 +334,20 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                 strpos($msgLower, 'post') !== false
             );
 
-            // [MODIFIED] If intent is search but AI thinks it's create_listing/post -> Force strict Consultation
+            
             if (($actionData['action'] === 'create_listing' || $actionData['action'] === 'create_post') && $isSearchIntent && !$isPostIntent) {
                 $actionData['action'] = 'consultation';
             }
 
             if ($actionData['action'] === 'create_post') {
+                if (empty($imagePaths)) {
+                    return ['response' => 'Để đăng bài viết, bạn cần gửi kèm ít nhất 1 hình ảnh. Vui lòng tải ảnh lên và yêu cầu lại.'];
+                }
                 return executeCreatePost($pdo, $userId, $actionData, $imagePaths);
             } elseif ($actionData['action'] === 'create_listing') {
+                if (empty($imagePaths)) {
+                    return ['response' => 'Để đăng tin phòng trọ, bạn cần gửi kèm hình ảnh thực tế. Vui lòng tải ảnh lên và yêu cầu lại.'];
+                }
                 return executeCreateListing($pdo, $userId, $actionData, $imagePaths);
             } elseif ($actionData['action'] === 'search' || $actionData['action'] === 'consultation') {
                 
@@ -362,7 +367,7 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                     $queryText = $actionData['query'];
                 }
 
-                // Fallback: Parse from message if JSON is empty but intent is clear
+                
                 if (!$city && !$priceMax && !$queryText) {
                      $msg = function_exists('mb_strtolower') ? mb_strtolower($userMessage) : strtolower($userMessage);
                      if (strpos($msg, 'hà nội') !== false || strpos($msg, 'hn') !== false) $city = 'Ha Noi';
@@ -378,7 +383,7 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                 $params = [];
 
                 if ($city) {
-                    $sql .= " AND city LIKE ? "; // Changed to LIKE for better flexibility
+                    $sql .= " AND city LIKE ? "; 
                     $params[] = "%$city%";
                 }
                 
@@ -406,7 +411,7 @@ function handleAiActions($pdo, $userId, $aiResponseText, $imagePaths, $userMessa
                     foreach ($listings as $l) {
                         $reply .= "🏠 **{$l['title']}**\n";
                         $reply .= "💰 " . number_format($l['price']) . " VND\n";
-                        // $reply .= "📍 {$l['address']}\n";
+                        
                         $reply .= "👉 [Xem chi tiết](listing_detail.php?id={$l['id']})\n\n";
                     }
                     return ['response' => $reply];
@@ -452,7 +457,7 @@ function executeCreatePost($pdo, $userId, $data, $imagePaths) {
         $pdo->commit();
 
         return [
-            'response' => "Tôi đã đăng bài viết mới của bạn với nội dung: \"{$caption}\" và " . count($imagePaths) . " ảnh.",
+            'response' => "Tôi đã đăng bài viết mới của bạn thành công! Bạn có thể xem nó tại: <a href='/index.php#post-{$postId}' target='_blank'>Xem bài viết</a>",
             'type' => 'post_created'
         ];
     } catch (Exception $e) {
@@ -490,7 +495,7 @@ function executeCreateListing($pdo, $userId, $data, $imagePaths) {
     $area = isset($data['area']) ? floatval($data['area']) : null;
 
     $rawType = strtolower($data['room_type'] ?? '');
-    $type = 'private'; // Default
+    $type = 'private'; 
     if (strpos($rawType, 'studio') !== false) {
         $type = 'studio';
     } elseif (strpos($rawType, 'share') !== false || strpos($rawType, 'ghép') !== false || strpos($rawType, 'chung') !== false) {
@@ -516,7 +521,7 @@ function executeCreateListing($pdo, $userId, $data, $imagePaths) {
         $pdo->commit();
         
         return [
-            'response' => "Tôi đã tạo tin đăng phòng trọ thành công! Bạn có thể xem nó trong danh sách.",
+            'response' => "Tôi đã tạo tin đăng phòng trọ thành công! Bạn có thể xem chi tiết tại: <a href='/listing_detail.php?id={$listingId}' target='_blank'>Xem tin đăng</a>",
             'type' => 'listing_created'
         ];
     } catch (Exception $e) {

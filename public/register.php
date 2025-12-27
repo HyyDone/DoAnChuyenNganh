@@ -17,16 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($stmt->fetch()) $errors[] = "Email hoặc username đã tồn tại.";
 
     if (empty($errors)) {
-        // Mã hóa mật khẩu SHA256
+        
         $hash = hash('sha256', $password);
         
-        // Insert vào bảng users theo schema mới (không có role)
+        
         $stmt = $pdo->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
         $stmt->execute([$username, $email, $hash]);
         
         $userId = $pdo->lastInsertId();
         $_SESSION['user_id'] = $userId;
-        // $_SESSION['role'] = 'tenant'; // Role không còn trong DB, có thể set mặc định trong session nếu cần logic khác
+        
         
         header('Location: /index.php');
         exit;

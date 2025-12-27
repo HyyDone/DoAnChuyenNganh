@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS users (
     otp_expires_at DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    is_active TINYINT(1) DEFAULT 1
+    is_active TINYINT(1) DEFAULT 1,
+    role ENUM('user', 'admin') DEFAULT 'user',
+    lock_reason VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS listings (
@@ -142,11 +144,29 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
 CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    type ENUM('request_booking', 'booking_confirmed', 'booking_rejected') NOT NULL,
-    reference_id INT NOT NULL,
+    type ENUM(
+        'request_booking', 
+        'booking_confirmed', 
+        'booking_rejected', 
+        'rental_stopped',
+        'damage_report', 
+        'damage_confirmed', 
+        'contract_created', 
+        'contract_signed', 
+        'contract_signed_confirm', 
+        'appliance_request', 
+        'appliance_approved', 
+        'appliance_rejected', 
+        'viewing_request', 
+        'viewing_update',
+        'new_report',
+        'report_resolved'
+    ) NOT NULL,
+    reference_id INT DEFAULT NULL,
     message TEXT,
-    is_read TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS favorites (
@@ -194,7 +214,7 @@ CREATE TABLE news (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Ngày đăng',
     INDEX idx_category (category),
     INDEX idx_views (views)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 CREATE TABLE IF NOT EXISTS appliances (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -209,7 +229,7 @@ CREATE TABLE IF NOT EXISTS appliances (
     image_path VARCHAR(255) DEFAULT NULL,   -- [MỚI] Đường dẫn ảnh
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 CREATE TABLE IF NOT EXISTS appliance_bookings (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -220,7 +240,7 @@ CREATE TABLE IF NOT EXISTS appliance_bookings (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (appliance_id) REFERENCES appliances(id) ON DELETE CASCADE,
     FOREIGN KEY (renter_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 INSERT INTO news (title, slug, image_url, category, summary, content, views, created_at) VALUES
 
@@ -345,5 +365,26 @@ CREATE TABLE IF NOT EXISTS rental_payments (
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS listing_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    listing_id INT NOT NULL,
+    reviewer_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reviewee_id INT NOT NULL,
+    reviewer_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (reviewee_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 
