@@ -293,9 +293,7 @@ if (isset($_SESSION['user_id'])) {
                     <button class="btn-favorite" onclick="openModal('reportModal')" title="Báo cáo tin này" style="border-color: #e74c3c;">
                         <i class="fa-solid fa-flag" style="color: #e74c3c;"></i>
                     </button>
-                    <button class="btn-favorite" onclick="openModal('reportModal')" title="Báo cáo tin này" style="border-color: #e74c3c;">
-                        <i class="fa-solid fa-flag" style="color: #e74c3c;"></i>
-                    </button>
+
                 </div>
             </div>
             <div class="listing-price"><?= number_format($listing['price'] ?? 0) ?> đ/tháng</div>

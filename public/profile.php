@@ -110,8 +110,8 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .cover-photo {
-            height: 350px;
-            background: linear-gradient(to bottom right, #7b4397, #dc2430); /* Placeholder gradient */
+            height: 500px;
+            background: url('/assets/poster.jpg') center center / cover no-repeat;
             border-bottom-left-radius: 8px;
             border-bottom-right-radius: 8px;
             position: relative;

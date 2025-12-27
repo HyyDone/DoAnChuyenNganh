@@ -79,7 +79,13 @@ $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $appliance['us
             --primary-color: #0866ff;
             --text-color: #050505;
         }
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
         
         .container {
             max-width: 1300px;

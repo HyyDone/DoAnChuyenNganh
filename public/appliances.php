@@ -54,15 +54,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 $filterCity = $_GET['city'] ?? 'all';
+$filterType = $_GET['type'] ?? 'all';
+
 $sql = "SELECT appliances.*, users.username, users.avatar FROM appliances JOIN users ON appliances.user_id = users.id";
+$whereClauses = [];
 $params = [];
 
 if ($filterCity !== 'all' && !empty($filterCity)) {
-    $sql .= " WHERE appliances.city = ?";
+    $whereClauses[] = "appliances.city = ?";
     $params[] = $filterCity;
 }
 
-$sql .= " ORDER BY created_at DESC";
+if ($filterType !== 'all' && !empty($filterType)) {
+    $whereClauses[] = "appliances.type = ?";
+    $params[] = $filterType;
+}
+
+if (!empty($whereClauses)) {
+    $sql .= " WHERE " . implode(" AND ", $whereClauses);
+}
+
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
+// Count total
+$countSql = "SELECT COUNT(*) FROM appliances";
+if (!empty($whereClauses)) {
+    $countSql .= " WHERE " . implode(" AND ", $whereClauses);
+}
+$stmtCount = $pdo->prepare($countSql);
+$stmtCount->execute($params);
+$totalItems = $stmtCount->fetchColumn();
+$totalPages = ceil($totalItems / $limit);
+
+$sql .= " ORDER BY created_at DESC LIMIT $limit OFFSET $offset";
 
 try {
     $stmtList = $pdo->prepare($sql);
@@ -230,12 +258,34 @@ try {
     <main class="main-content">
         <div class="filter-bar">
             <span><i class="fa-solid fa-filter"></i> Lọc theo:</span>
-            <select onchange="window.location.href='?city='+this.value" class="form-select" style="width: 200px; margin: 0;">
+            <select onchange="updateParams('city', this.value)" class="form-select" style="width: 200px; margin: 0;">
                 <option value="all">Tất cả thành phố</option>
                 <option value="Ho Chi Minh" <?= $filterCity == 'Ho Chi Minh' ? 'selected' : '' ?>>Hồ Chí Minh</option>
                 <option value="Ha Noi" <?= $filterCity == 'Ha Noi' ? 'selected' : '' ?>>Hà Nội</option>
                 <option value="Da Nang" <?= $filterCity == 'Da Nang' ? 'selected' : '' ?>>Đà Nẵng</option>
             </select>
+            
+            <select onchange="updateParams('type', this.value)" class="form-select" style="width: 200px; margin: 0;">
+                <option value="all">Tất cả loại đồ</option>
+                <option value="Tủ lạnh" <?= $filterType == 'Tủ lạnh' ? 'selected' : '' ?>>Tủ lạnh</option>
+                <option value="Máy giặt" <?= $filterType == 'Máy giặt' ? 'selected' : '' ?>>Máy giặt</option>
+                <option value="Quạt" <?= $filterType == 'Quạt' ? 'selected' : '' ?>>Quạt</option>
+                <option value="Bếp Gas" <?= $filterType == 'Bếp Gas' ? 'selected' : '' ?>>Bếp Gas</option>
+                <option value="Khác" <?= $filterType == 'Khác' ? 'selected' : '' ?>>Khác</option>
+            </select>
+
+            <script>
+            function updateParams(key, value) {
+                const url = new URL(window.location.href);
+                if (value === 'all') {
+                    url.searchParams.delete(key);
+                } else {
+                    url.searchParams.set(key, value);
+                }
+                url.searchParams.set('page', 1); // Reset to page 1 when filtering
+                window.location.href = url.toString();
+            }
+            </script>
         </div>
 
         <?php if (count($appliances) > 0): ?>
@@ -281,6 +331,25 @@ try {
             <div style="background: white; padding: 40px; text-align: center; border-radius: 8px;">
                 <p>Chưa có đồ gia dụng nào được đăng trong khu vực này.</p>
             </div>
+        <?php endif; ?>
+
+        <!-- Pagination -->
+        <?php if (isset($totalPages) && $totalPages > 1): ?>
+        <div style="display: flex; justify-content: center; margin-top: 20px; gap: 10px;">
+            <?php if ($page > 1): ?>
+                <a href="?page=<?= $page - 1 ?>&city=<?= urlencode($filterCity) ?>&type=<?= urlencode($filterType) ?>" class="btn-detail" style="background:white; color:var(--text-color); border:1px solid #ddd;">&laquo; Trước</a>
+            <?php endif; ?>
+
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="?page=<?= $i ?>&city=<?= urlencode($filterCity) ?>&type=<?= urlencode($filterType) ?>" class="btn-detail" style="<?= $i === $page ? '' : 'background:white; color:var(--text-color); border:1px solid #ddd;' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+
+            <?php if ($page < $totalPages): ?>
+                <a href="?page=<?= $page + 1 ?>&city=<?= urlencode($filterCity) ?>&type=<?= urlencode($filterType) ?>" class="btn-detail" style="background:white; color:var(--text-color); border:1px solid #ddd;">Sau &raquo;</a>
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
     </main>
 
